@@ -20,7 +20,7 @@ export default function Dashboard() {
         </div>
 
         <div className="method-card" onClick={() => navigate('/differentiation')}>
-          <h3>Diferencias Finitas/h3>
+          <h3>Diferencias Finitas</h3>
           <p>Calcula f'(x) y f''(x) numericamente</p>
         </div>
 
