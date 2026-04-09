@@ -8,13 +8,14 @@ import '../styles/Method.css'
 export default function RootFinding() {
   const [method, setMethod] = useState('biseccion')
   const [input, setInput] = useState({
-    func_str: 'x**2 - 2',
+    func_str: 'exp(x) - x**2 + 3*x - 2',
     g_str: 'sqrt(2)',
-    a: '-2',
-    b: '2',
+    a: '0',
+    b: '1',
     x0: '1',
     tol: '1e-6',
-    max_iter: '100'
+    max_iter: '100',
+    precision: '8' // <-- Se agregó el estado de precisión
   })
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -35,7 +36,8 @@ export default function RootFinding() {
         b: input.b ? parseFloat(input.b) : undefined,
         x0: parseFloat(input.x0),
         tol: parseFloat(input.tol),
-        max_iter: parseInt(input.max_iter)
+        max_iter: parseInt(input.max_iter),
+        precision: parseInt(input.precision) // <-- Se manda al backend
       }
 
       switch(method) {
@@ -65,13 +67,36 @@ export default function RootFinding() {
 
   const generateFunctionPlot = () => {
     try {
-      const a = parseFloat(input.a)
-      const b = parseFloat(input.b)
+      let a = parseFloat(input.a)
+      let b = parseFloat(input.b)
       const funcStr = input.func_str
 
-      const func = new Function('x', `return ${funcStr.replace(/\^/g, '**')}`)
+      // Si b y a están invertidos, acomodarlos para el gráfico
+      if (a > b) {
+        const temp = a; a = b; b = temp;
+      }
 
-      const x = Array.from({ length: 200 }, (_, i) => a + (i / 200) * (b - a))
+      // Traductor para que JavaScript entienda las funciones matemáticas
+      let jsFuncStr = funcStr
+        .replace(/\^/g, '**')
+        .replace(/\bsin\(/g, 'Math.sin(')
+        .replace(/\bcos\(/g, 'Math.cos(')
+        .replace(/\btan\(/g, 'Math.tan(')
+        .replace(/\bexp\(/g, 'Math.exp(')
+        .replace(/\blog\(/g, 'Math.log(')
+        .replace(/\bsqrt\(/g, 'Math.sqrt(')
+        .replace(/\bpi\b/g, 'Math.PI')
+        .replace(/\be\b/g, 'Math.E');
+
+      const func = new Function('x', `return ${jsFuncStr}`)
+
+      // Margen visual para no graficar exactamente de A a B
+      let margin = (b - a) * 0.2;
+      if (margin === 0) margin = 1;
+      const xStart = a - margin;
+      const xEnd = b + margin;
+
+      const x = Array.from({ length: 200 }, (_, i) => xStart + (i / 200) * (xEnd - xStart))
       const y = x.map(xi => {
         try {
           return func(xi)
@@ -80,13 +105,27 @@ export default function RootFinding() {
         }
       })
 
-      return [{
+      const data: any[] = [{
         x,
         y,
         type: 'scatter',
         name: 'f(x)',
         line: { color: '#000080' }
       }]
+
+      // Si hay resultado, agregar el punto de la raíz encontrada
+      if (result && result.raiz !== undefined) {
+        data.push({
+          x: [result.raiz],
+          y: [0], // f(raíz) es aprox 0
+          type: 'scatter',
+          mode: 'markers',
+          name: `Raíz ≈ ${result.raiz.toFixed(4)}`,
+          marker: { color: 'red', size: 10 }
+        })
+      }
+
+      return data;
     } catch {
       return []
     }
@@ -98,28 +137,28 @@ export default function RootFinding() {
       descripcion: 'Encuentra una raiz dividiendo el intervalo a la mitad iterativamente.',
       formula_latex: 'x_n = \\frac{a + b}{2}',
       condiciones: 'Requiere f(a) * f(b) < 0 (signos opuestos)',
-      parametros: ['f(x): Funcion continua', 'a, b: Intervalo [a,b]', 'tolerancia: Precision requerida', 'max_iter: Iteraciones maximas']
+      parametros: ['f(x): Funcion continua', 'a, b: Intervalo [a,b]', 'tolerancia: Precision requerida', 'max_iter: Iteraciones maximas', 'precision: Decimales del reporte']
     },
     'punto-fijo': {
       nombre: 'Metodo de Punto Fijo',
       descripcion: 'Resuelve x = g(x) iterativamente: x_n+1 = g(x_n)',
       formula_latex: 'x_{n+1} = g(x_n)',
-      condiciones: '|g\'(x)| < 1 en el intervalo de convergencia',
-      parametros: ['g(x): Funcion iterada', 'x0: Valor inicial', 'tolerancia', 'max_iter']
+      condiciones: '|g\'(x0)| < 1 en el intervalo de convergencia',
+      parametros: ['g(x): Funcion iterada - Se calcula despejando la x ó alguna x si hay mas de una', 'x0: Valor inicial', 'tolerancia', 'max_iter']
     },
     'newton-raphson': {
       nombre: 'Metodo de Newton-Raphson',
       descripcion: 'Metodo de segundo orden usando derivada: x_n+1 = x_n - f(x_n)/f\'(x_n)',
       formula_latex: 'x_{n+1} = x_n - \\frac{f(x_n)}{f\'(x_n)}',
       condiciones: 'f\'(x) != 0 en la vecindad de la raiz',
-      parametros: ['f(x): Funcion', 'x0: Valor inicial', 'tolerancia', 'max_iter']
+      parametros: ['f(x): Funcion - El script calcula la segunda derivada' , 'x0: Valor inicial', 'tolerancia', 'max_iter']
     },
-    aitken: {
+aitken: {
       nombre: 'Aceleracion de Aitken (Delta-squared)',
-      descripcion: 'Acelera la convergencia del punto fijo usando: x_n+1 = x_n - (Δx_n)² / Δ²x_n',
-      formula_latex: '\\Delta^2 x = (x_{n+2} - 2x_{n+1} + x_n)',
+      descripcion: 'Acelera la convergencia del punto fijo evaluando 3 puntos sucesivos (x0, x1, x2).',
+      formula_latex: 'x^*_n = x_0 - \\frac{(x_1 - x_0)^2}{x_2 - 2x_1 + x_0}',
       condiciones: 'Aplicable sobre punto fijo convergente',
-      parametros: ['g(x): Funcion iterada', 'x0: Valor inicial', 'tolerancia', 'max_iter']
+      parametros: ['g(x): Funcion iterada - Se calcula despejando la x ó alguna x si hay mas de una', 'x0: Valor inicial', 'tolerancia', 'max_iter']
     }
   }
 
@@ -156,16 +195,19 @@ export default function RootFinding() {
             </select>
           </div>
 
-          <form onSubmit={handleSubmit} className="param-form">
+            <form onSubmit={handleSubmit} className="param-form">
             {(method === 'punto-fijo' || method === 'aitken') && (
               <div className="form-group">
-                <label>g(x) [iteracion]:</label>
+                <label>g(x) [Función Iterada]:</label>
                 <input
                   type="text"
                   value={input.g_str}
                   onChange={(e) => setInput({...input, g_str: e.target.value})}
                 />
-                <small>Ej: (x + 2/x) / 2 o sqrt(2)</small>
+                <small style={{ color: '#000080', display: 'block', marginTop: '4px' }}>
+                  <strong>Nota:</strong> Debes despejar 'x' de tu f(x)=0 manualmente. 
+                  Asegúrate de que |g'(x)| &lt; 1 para no divergir.
+                </small>
               </div>
             )}
 
@@ -177,7 +219,7 @@ export default function RootFinding() {
                   value={input.func_str}
                   onChange={(e) => setInput({...input, func_str: e.target.value})}
                 />
-                <small>Ej: x**2 - 2 o sin(x) - x/2</small>
+                <small>Ej: x**2 - 2 o exp(x) - x</small>
               </div>
             )}
 
@@ -234,6 +276,18 @@ export default function RootFinding() {
                 onChange={(e) => setInput({...input, max_iter: e.target.value})}
               />
             </div>
+            
+            {/* NUEVO INPUT DE PRECISIÓN */}
+            <div className="form-group">
+              <label>Decimales (precision):</label>
+              <input
+                type="number"
+                min="1"
+                max="15"
+                value={input.precision}
+                onChange={(e) => setInput({...input, precision: e.target.value})}
+              />
+            </div>
 
             <button type="submit" disabled={loading} className="btn-primary">
               {loading ? 'Calculando...' : 'Calcular'}
@@ -248,10 +302,11 @@ export default function RootFinding() {
           {result && !error && (
             <>
               <div className="result-box">
-                <strong>Raiz encontrada:</strong> {(result.raiz || result.root)?.toFixed(8)}
+                <strong>Raiz encontrada:</strong> {(result.raiz || result.root)?.toFixed(input.precision as any)}
               </div>
 
-              {method === 'biseccion' && (
+              {/* El gráfico ahora se muestra para todos los métodos que tienen f(x) */}
+              {(method === 'biseccion' || method === 'newton-raphson') && (
                 <PlotlyGraph 
                   data={generateFunctionPlot()}
                   title={`f(x) = ${input.func_str}`}
@@ -268,8 +323,14 @@ export default function RootFinding() {
               <div className="result-box">
                 <p>Iter. totales: {result.num_iter}</p>
                 <p>Convergencia: {result.convergencia ? 'SI' : 'NO'}</p>
+                {result.error_msg && (
+                  <p style={{ color: '#cc0000', fontWeight: 'bold', marginTop: '8px' }}>
+                    {result.error_msg}
+                  </p>
+                )}
               </div>
             </>
+            
           )}
         </div>
       </div>

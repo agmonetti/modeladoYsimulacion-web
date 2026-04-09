@@ -8,6 +8,7 @@ Métodos para búsqueda de raíces
 import numpy as np
 from typing import Dict, List, Tuple, Callable
 import sympy as sp
+import math
 
 class RootFindingService:
     
@@ -15,9 +16,10 @@ class RootFindingService:
     def compilar_funcion(texto_funcion: str, variables: str = 'x') -> Callable:
         """Convierte string matemático a función callable con NumPy."""
         try:
-            texto_funcion = texto_funcion.replace('e^', 'exp(')
+            texto_funcion = texto_funcion.replace('e^', 'exp(').replace('^', '**')
             x = sp.Symbol(variables.split()[0])
-            expr = sp.sympify(texto_funcion)
+            diccionario_local = {'e': sp.E, 'pi': sp.pi}
+            expr = sp.sympify(texto_funcion, locals=diccionario_local)
             return sp.lambdify(x, expr, 'numpy')
         except Exception as e:
             raise ValueError(f"Error compilando función: {str(e)}")
@@ -27,22 +29,36 @@ class RootFindingService:
                   tol: float = 1e-6, max_iter: int = 100, 
                   precision: int = 8) -> Dict:
         """Método de Bisección - acecha cambios de signo."""
-        if f(a) * f(b) >= 0:
-            raise ValueError("f(a) y f(b) deben tener signos opuestos")
+        try:
+            fa = float(f(a))
+            fb = float(f(b))
+        except:
+            raise ValueError("Error al evaluar f(a) o f(b). Asegúrese de que la función es válida en el intervalo.")
+            
+        if fa * fb >= 0:
+            raise ValueError("f(a) y f(b) deben tener signos opuestos (f(a) * f(b) < 0).")
         
         iteraciones = []
         
         for i in range(max_iter):
             c = (a + b) / 2.0
-            fc = f(c)
+            try:
+                fc = float(f(c))
+                if math.isnan(fc) or math.isinf(fc):
+                    raise OverflowError("El valor de f(c) divergió a infinito o no existe.")
+            except Exception as e:
+                return {
+                    "metodo": "Bisección", "raiz": None, "iteraciones": iteraciones,
+                    "convergencia": False, "num_iter": i, "error_msg": f"Divergencia matemática: {str(e)}"
+                }
             
             iteraciones.append({
-                "i": i,
+                "i": i + 1,
                 "a": round(a, precision),
                 "b": round(b, precision),
                 "c": round(c, precision),
                 "f_c": round(fc, precision),
-                "error": round(abs(b - a) / 2, precision)
+                "error": round(abs(b - a) / 2.0, precision)
             })
             
             if abs(fc) < tol or (b - a) / 2.0 < tol:
@@ -54,17 +70,20 @@ class RootFindingService:
                     "num_iter": i + 1
                 }
             
-            if f(a) * f(c) < 0:
+            if fa * fc < 0:
                 b = c
+                fb = fc
             else:
                 a = c
+                fa = fc
         
         return {
             "metodo": "Bisección",
-            "raiz": round((a + b) / 2, precision),
+            "raiz": round((a + b) / 2.0, precision),
             "iteraciones": iteraciones,
             "convergencia": False,
-            "num_iter": max_iter
+            "num_iter": max_iter,
+            "error_msg": "Se alcanzó el límite de iteraciones sin converger."
         }
     
     @staticmethod
@@ -76,11 +95,25 @@ class RootFindingService:
         iteraciones = []
         
         for i in range(max_iter):
-            x_new = g(x)
+            try:
+                x_new = float(g(x))
+                # Trampa para evitar que el JSON explote en el backend
+                if math.isnan(x_new) or math.isinf(x_new):
+                    raise OverflowError("La iteración explotó hacia el infinito.")
+            except Exception as e:
+                return {
+                    "metodo": "Punto Fijo",
+                    "raiz": None,
+                    "iteraciones": iteraciones,
+                    "convergencia": False,
+                    "num_iter": i,
+                    "error_msg": f"¡La función diverge! Asegúrate de que |g'(x)| < 1. ({str(e)})"
+                }
+
             error = abs(x_new - x)
             
             iteraciones.append({
-                "i": i,
+                "i": i + 1,
                 "x": round(x, precision),
                 "g_x": round(x_new, precision),
                 "error": round(error, precision)
@@ -102,7 +135,8 @@ class RootFindingService:
             "raiz": round(x, precision),
             "iteraciones": iteraciones,
             "convergencia": False,
-            "num_iter": max_iter
+            "num_iter": max_iter,
+            "error_msg": "No converge. Revisa si |g'(x)| < 1 en el intervalo."
         }
     
     @staticmethod
@@ -119,21 +153,34 @@ class RootFindingService:
         iteraciones = []
         
         for i in range(max_iter):
-            fx = f(x)
-            dfx = RootFindingService._derivada_numerica(f, x)
-            
-            if abs(dfx) < 1e-10:
-                raise ValueError("Derivada muy cerca de cero")
-            
-            x_new = x - fx / dfx
+            try:
+                fx = float(f(x))
+                dfx = float(RootFindingService._derivada_numerica(f, x))
+                
+                if abs(dfx) < 1e-12:
+                    raise ValueError("La derivada se hizo cero (tangente horizontal).")
+                
+                x_new = x - fx / dfx
+                if math.isnan(x_new) or math.isinf(x_new):
+                    raise OverflowError("La iteración divergió a infinito.")
+            except Exception as e:
+                return {
+                    "metodo": "Newton-Raphson",
+                    "raiz": None,
+                    "iteraciones": iteraciones,
+                    "convergencia": False,
+                    "num_iter": i,
+                    "error_msg": f"Falla en la iteración: {str(e)}"
+                }
+                
             error = abs(x_new - x)
             
             iteraciones.append({
-                "i": i,
+                "i": i + 1,
                 "x": round(x, precision),
-                "f_x": round(fx, precision),
-                "df_x": round(dfx, precision),
-                "x_new": round(x_new, precision),
+                "f (x)": round(fx, precision),
+                "f ' (x)": round(dfx, precision),
+                "Resultado": round(x_new, precision),
                 "error": round(error, precision)
             })
             
@@ -153,7 +200,8 @@ class RootFindingService:
             "raiz": round(x, precision),
             "iteraciones": iteraciones,
             "convergencia": False,
-            "num_iter": max_iter
+            "num_iter": max_iter,
+            "error_msg": "Se alcanzó el límite de iteraciones sin converger."
         }
     
     @staticmethod
@@ -165,19 +213,32 @@ class RootFindingService:
         iteraciones = []
         
         for i in range(max_iter):
-            x1 = g(x)
-            x2 = g(x1)
-            
-            denominador = x2 - 2*x1 + x
-            if abs(denominador) > 1e-10:
-                x_acelerado = x - (x1 - x)**2 / denominador
-            else:
-                x_acelerado = x2
+            try:
+                x1 = float(g(x))
+                x2 = float(g(x1))
+                
+                denominador = x2 - 2*x1 + x
+                if abs(denominador) > 1e-12:
+                    x_acelerado = x - (x1 - x)**2 / denominador
+                else:
+                    x_acelerado = x2
+                    
+                if math.isnan(x_acelerado) or math.isinf(x_acelerado):
+                    raise OverflowError("La aceleración divergió a infinito.")
+            except Exception as e:
+                return {
+                    "metodo": "Aitken",
+                    "raiz": None,
+                    "iteraciones": iteraciones,
+                    "convergencia": False,
+                    "num_iter": i,
+                    "error_msg": f"¡Divergencia detectada! {str(e)}"
+                }
             
             error = abs(x_acelerado - x)
             
             iteraciones.append({
-                "i": i,
+                "i": i + 1,
                 "x": round(x, precision),
                 "g_x": round(x1, precision),
                 "g_g_x": round(x2, precision),
@@ -201,5 +262,6 @@ class RootFindingService:
             "raiz": round(x, precision),
             "iteraciones": iteraciones,
             "convergencia": False,
-            "num_iter": max_iter
+            "num_iter": max_iter,
+            "error_msg": "No converge."
         }

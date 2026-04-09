@@ -1,21 +1,36 @@
 import { useState } from 'react'
 import { interpolationService } from '../services/api'
 import PlotlyGraph from '../components/PlotlyGraph'
-import IterationsTable from '../components/IterationsTable'
 import FormulaDisplay from '../components/FormulaDisplay'
 import '../styles/Method.css'
 
 export default function Interpolation() {
+  const [modo, setModo] = useState('caso1')
   const [input, setInput] = useState({
     func_str: 'sin(x)',
-    puntos_x: '-1,0,1',
+    puntos_x: '0, pi/2, pi',
     puntos_y: '',
-    x_eval: '0.5',
+    x_eval: 'pi/4', 
     precision: '8'
   })
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // SÚPER TRADUCTOR MATEMÁTICO (Convierte pi/4 -> 0.785...)
+  const parseMathExpr = (expr: string): number => {
+    if (!expr || expr.trim() === '') return NaN;
+    try {
+      let safeExpr = expr
+        .replace(/\bpi\b/gi, 'Math.PI')
+        .replace(/\be\b/gi, 'Math.E')
+        .replace(/\^/g, '**');
+      const res = new Function(`return ${safeExpr}`)();
+      return Number(res);
+    } catch {
+      return NaN;
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,23 +39,43 @@ export default function Interpolation() {
     setResult(null)
 
     try {
-      const puntos_x = input.puntos_x.split(',').map(x => parseFloat(x.trim()))
-      const puntos_y = input.puntos_y 
-        ? input.puntos_y.split(',').map(y => parseFloat(y.trim()))
-        : undefined
+      const puntos_x = input.puntos_x.split(',').map(x => parseMathExpr(x.trim()))
+      if (puntos_x.some(isNaN)) {
+        throw new Error("Puntos X contiene expresiones inválidas (ej. use pi/2 o 1/3).")
+      }
+
+      let puntos_y = undefined
+      if (modo === 'caso2') {
+        puntos_y = input.puntos_y.split(',').map(y => parseMathExpr(y.trim()))
+        if (puntos_y.some(isNaN)) {
+          throw new Error("Puntos Y contiene expresiones inválidas.")
+        }
+        if (puntos_x.length !== puntos_y.length) {
+          throw new Error("La cantidad de puntos X debe ser igual a la de puntos Y.")
+        }
+      }
       
+      const x_eval_str = input.x_eval.trim()
+      const x_eval_val = x_eval_str !== '' ? parseMathExpr(x_eval_str) : undefined
+      if (x_eval_val !== undefined && isNaN(x_eval_val)) {
+        throw new Error("El valor de evaluar en x es inválido (ej. use pi/4 o 1/3).")
+      }
+
+      // Traducir 'sen' a 'sin' para que Python no explote
+      const funcSegura = modo === 'caso1' ? input.func_str.replace(/sen/gi, 'sin') : undefined;
+
       const payload = {
         puntos_x,
-        x_eval: parseFloat(input.x_eval),
-        func_str: input.func_str,
-        puntos_y,
+        x_eval: x_eval_val,
+        func_str: funcSegura,
+        puntos_y: modo === 'caso2' ? puntos_y : undefined,
         precision: parseInt(input.precision)
       }
 
       const response = await interpolationService.lagrange(payload)
       setResult(response.data)
     } catch (error: any) {
-      setError(error.response?.data?.detail || String(error))
+      setError(error.message || error.response?.data?.detail || String(error))
     } finally {
       setLoading(false)
     }
@@ -48,48 +83,57 @@ export default function Interpolation() {
 
   const generateInterpolationPlot = () => {
     try {
-      const puntos_x = input.puntos_x.split(',').map(x => parseFloat(x.trim()))
-      const func_str = input.func_str
-      const func = new Function('x', `return ${func_str.replace(/\^/g, '**')}`)
+      const puntos_x = input.puntos_x.split(',').map(x => parseMathExpr(x.trim()))
+      const x_eval_str = input.x_eval.trim()
+      const has_eval = x_eval_str !== '' 
+      const eval_val = has_eval ? parseMathExpr(x_eval_str) : puntos_x[0]
+      const valid_eval = has_eval && !isNaN(eval_val)
 
-      // Generar puntos y para interp
-      const puntos_y = puntos_x.map(xi => {
-        try {
-          return func(xi)
-        } catch {
-          return NaN
-        }
-      })
-
-      // Rango para gracar
-      const min_x = Math.min(...puntos_x)
-      const max_x = Math.max(...puntos_x)
+      const min_x = valid_eval ? Math.min(...puntos_x, eval_val) : Math.min(...puntos_x)
+      const max_x = valid_eval ? Math.max(...puntos_x, eval_val) : Math.max(...puntos_x)
       const range = (max_x - min_x) * 0.2
-
       const x_plot = Array.from({ length: 200 }, (_, i) => min_x - range + (i / 200) * (2 * range + max_x - min_x))
-      const y_func = x_plot.map(xi => {
-        try {
-          return func(xi)
-        } catch {
-          return NaN
-        }
-      })
 
-      return [{
-        x: x_plot,
-        y: y_func,
-        type: 'scatter',
-        name: 'f(x) original',
-        line: { color: '#0000ff' }
-      },
-      {
-        x: puntos_x,
-        y: puntos_y,
-        type: 'scatter',
-        name: 'Puntos conocidos',
-        mode: 'markers',
-        marker: { size: 8, color: '#ff0000' }
-      }]
+      const plotData: any[] = []
+
+      if (modo === 'caso1') {
+        const jsFuncStr = input.func_str
+          .replace(/sen/gi, 'sin') // Limpiar 'sen'
+          .replace(/\^/g, '**')
+          .replace(/\bsin\(/g, 'Math.sin(')
+          .replace(/\bcos\(/g, 'Math.cos(')
+          .replace(/\bexp\(/g, 'Math.exp(')
+          .replace(/\blog\(/g, 'Math.log(')
+          .replace(/\bsqrt\(/g, 'Math.sqrt(')
+          .replace(/\bpi\b/g, 'Math.PI')
+          .replace(/\be\b/g, 'Math.E');
+
+        const func = new Function('x', `return ${jsFuncStr}`)
+        
+        const y_func = x_plot.map(xi => { try { return func(xi) } catch { return NaN } })
+        const puntos_y = puntos_x.map(xi => { try { return func(xi) } catch { return NaN } })
+
+        plotData.push({ x: x_plot, y: y_func, type: 'scatter', name: 'f(x) original', line: { color: '#0000ff' } })
+        plotData.push({ x: puntos_x, y: puntos_y, type: 'scatter', name: 'Puntos conocidos', mode: 'markers', marker: { size: 8, color: '#ff0000' } })
+      } 
+      else if (modo === 'caso2' && result && result.polinomio) {
+        const puntos_y = input.puntos_y.split(',').map(y => parseMathExpr(y.trim()))
+        const jsPolyStr = result.polinomio.replace(/\*\*/g, '**')
+        const polyFunc = new Function('x', `return ${jsPolyStr}`)
+        const y_poly = x_plot.map(xi => { try { return polyFunc(xi) } catch { return NaN } })
+
+        plotData.push({ x: x_plot, y: y_poly, type: 'scatter', name: 'P(x) Lagrange', line: { color: '#ffa500', dash: 'dash' } })
+        plotData.push({ x: puntos_x, y: puntos_y, type: 'scatter', name: 'Puntos base', mode: 'markers', marker: { size: 8, color: '#ff0000' } })
+      }
+
+      if (result && result.P_eval !== undefined && result.x_eval !== undefined) {
+        plotData.push({
+          x: [result.x_eval], y: [result.P_eval], type: 'scatter', name: `Eval x=${result.x_eval}`,
+          mode: 'markers', marker: { size: 10, color: 'green', symbol: 'x' }
+        })
+      }
+
+      return plotData
     } catch {
       return []
     }
@@ -98,9 +142,8 @@ export default function Interpolation() {
   const theory = {
     nombre: 'Interpolación de Lagrange',
     descripcion: 'Construye un polinomio de grado n-1 que pasa por n puntos dados.',
-    formula: 'P(x) = \\sum_{i=0}^{n} y_i L_i(x), \\quad L_i(x) = \\prod_{\\substack{j=0 \\\\ j \\neq i}}^{n} \\frac{x - x_j}{x_i - x_j}',
-    condiciones: 'Exacta en los puntos conocidos. Error en extrapolación puede ser grande fuera del rango.',
-    parametros: ['f(x): Función original (opcional)', 'puntos_x: Abscisas de los puntos', 'puntos_y: Ordenadas (o usa f(x))', 'x_eval: Punto para evaluar']
+   formula: 'P(x) = \\sum_{i=0}^{n} y_i L_i(x), \\quad L_i(x) = \\prod_{\\begin{smallmatrix}  j=0 \\\\  i!=j \\end{smallmatrix}}^{n} \\frac{x - x_j}{x_i - x_j}',
+    condiciones: 'Exacta en los puntos conocidos. Error en extrapolación puede ser grande fuera del rango.'
   }
 
   return (
@@ -110,70 +153,67 @@ export default function Interpolation() {
       <div className="theory-section">
         <h3>Teoria: {theory.nombre}</h3>
         <p><strong>Descripcion:</strong> {theory.descripcion}</p>
-        
         <FormulaDisplay formula={theory.formula} title="Formula:" />
-        
         <p><strong>Condiciones:</strong> {theory.condiciones}</p>
-        <p><strong>Parametros:</strong></p>
-        <ul>
-          {theory.parametros.map((p: string, i: number) => <li key={i}>{p}</li>)}
-        </ul>
+        
+        <div style={{ marginTop: '10px', background: '#e6f2ff', padding: '8px', borderLeft: '4px solid #0066cc' }}>
+          <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+            <li><strong>Caso 1:</strong> La función está dada, entonces no hacen falta los puntos_y ya que se calculan. Hace falta la función, los puntos_x y el x_eval.</li>
+            <li><strong>Caso 2:</strong> No tengo la función, entonces hace falta puntos_x, puntos_y y x_eval.</li>
+            <li><strong>Importante:</strong> El x_eval es opcional. Si lo dejas vacío, el resultado solo mostrará el polinomio final sin evaluar ningún punto específico.</li>
+            <li><strong>Caso a tener en cuenta: tengo los puntos_x y los puntos_y, pero un punto_y es una constante 'k' que no conozco, para hallarla, paso como x_eval el punto_x del que no tengo su punto_y </strong>  </li>
+            <li> ejemplo: x:[0,1,2,3,4] y: [1,2,b,2,3 ], entonces, parametros: x[0,1,3,4], y:[1,2,2,3] y x_val: 2 </li>
+            <li> resultado:P(2) = 2</li>
+          </ul>
+        </div>
       </div>
 
       <div className="method-container">
         <div className="form-section">
           <h2>Parametros</h2>
 
-          <form onSubmit={handleSubmit} className="param-form">
-            <div className="form-group">
-              <label>f(x) (para generar puntos):</label>
-              <input
-                type="text"
-                value={input.func_str}
-                onChange={(e) => setInput({...input, func_str: e.target.value})}
-              />
-              <small>Ej: sin(x), exp(x), x**2 - opcional si usas puntos_y</small>
+          <div style={{ marginBottom: '15px', padding: '10px', background: '#f0f0f0', border: '1px solid #ccc' }}>
+            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Seleccione el Caso de Uso:</label>
+            <div style={{ display: 'flex', gap: '15px' }}>
+              <label><input type="radio" value="caso1" checked={modo === 'caso1'} onChange={(e) => setModo(e.target.value)} style={{ marginRight: '5px' }}/>Caso 1: Usar f(x)</label>
+              <label><input type="radio" value="caso2" checked={modo === 'caso2'} onChange={(e) => setModo(e.target.value)} style={{ marginRight: '5px' }}/>Caso 2: Puntos Directos</label>
             </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="param-form">
+            
+            {modo === 'caso1' && (
+              <div className="form-group">
+                <label>f(x) (para generar las imágenes):</label>
+                <input type="text" value={input.func_str} onChange={(e) => setInput({...input, func_str: e.target.value})} />
+                <small>Ej: sin(x), exp(x), x**2</small>
+              </div>
+            )}
 
             <div className="form-group">
               <label>Puntos X (separados por coma):</label>
-              <input
-                type="text"
-                value={input.puntos_x}
-                onChange={(e) => setInput({...input, puntos_x: e.target.value})}
-              />
-              <small>Ej: -1, 0, 1, 2</small>
+              <input type="text" value={input.puntos_x} onChange={(e) => setInput({...input, puntos_x: e.target.value})} />
+              <small>Ej: 0, pi/2, pi</small>
             </div>
 
-            <div className="form-group">
-              <label>Puntos Y (separados por coma, opcional):</label>
-              <input
-                type="text"
-                value={input.puntos_y}
-                onChange={(e) => setInput({...input, puntos_y: e.target.value})}
-              />
-              <small>Si no se completa, usa f(x_i) de la funcion</small>
-            </div>
+            {modo === 'caso2' && (
+              <div className="form-group">
+                <label>Puntos Y (separados por coma):</label>
+                <input type="text" value={input.puntos_y} onChange={(e) => setInput({...input, puntos_y: e.target.value})} />
+                <small>Debe haber la misma cantidad que en Puntos X</small>
+              </div>
+            )}
 
             <div className="form-group">
-              <label>Evaluar en x:</label>
-              <input
-                type="number"
-                step="0.01"
-                value={input.x_eval}
-                onChange={(e) => setInput({...input, x_eval: e.target.value})}
-              />
+              <label>Evaluar en x (Opcional):</label>
+              {/* CAMBIADO DE type="number" a type="text" */}
+              <input type="text" value={input.x_eval} onChange={(e) => setInput({...input, x_eval: e.target.value})} />
+              <small style={{ color: '#0066cc', fontWeight: 'bold' }}>Ej: pi/4, 1/3. Dejar vacío si solo buscas el Polinomio.</small>
             </div>
 
             <div className="form-group">
               <label>Decimales (precision):</label>
-              <input
-                type="number"
-                min="1"
-                max="15"
-                value={input.precision}
-                onChange={(e) => setInput({...input, precision: e.target.value})}
-              />
+              <input type="number" min="1" max="15" value={input.precision} onChange={(e) => setInput({...input, precision: e.target.value})} />
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary">
@@ -183,47 +223,73 @@ export default function Interpolation() {
         </div>
 
         <div className="result-section">
-          <h2>Resultados</h2>
+          <h2>Desarrollo y Resultados</h2>
           {error && <div className="error-box">Error: {error}</div>}
 
           {result && !error && (
             <>
-              <PlotlyGraph 
-                data={generateInterpolationPlot()}
-                title={`Interpolacion de Lagrange - f(x) = ${input.func_str}`}
-              />
+              <PlotlyGraph data={generateInterpolationPlot()} title={modo === 'caso1' ? `Interpolacion: f(x) = ${input.func_str}` : `Interpolacion por Puntos Directos`} />
 
-              {result.polinomio && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                 <div className="result-box">
-                  <h3>Polinomio Interpolante</h3>
-                  <p><code>{result.polinomio}</code></p>
-                  <p>Grado: {result.grado}</p>
+                  <h3 style={{ margin: '0 0 10px 0', color: '#000080' }}>--- 1. Puntos Evaluados ---</h3>
+                  <table style={{ width: '100%', fontSize: '13px', fontFamily: 'monospace' }}>
+                    <tbody>
+                      {result.puntos.map((pt: any, i: number) => (
+                        <tr key={i}>
+                          <td style={{ padding: '2px' }}>x_{i} = {pt.x.toFixed(4)}</td><td style={{ padding: '2px', textAlign: 'center' }}>⇒</td><td style={{ padding: '2px' }}>y_{i} = {pt.y.toFixed(6)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
 
-              {result.puntos && (
-                <IterationsTable 
-                  iterations={result.puntos}
-                  title="Puntos de Interpolacion"
-                />
-              )}
+                {result.terminos && (
+                  <div className="result-box">
+                    <h3 style={{ margin: '0 0 10px 0', color: '#000080' }}>--- 2. Construcción del Polinomio ---</h3>
+                    {result.terminos.map((t: any) => (
+                      <div key={t.i} style={{ marginBottom: '6px', fontFamily: 'monospace' }}><code>L_{t.i}(x) * y_{t.i} = {t.l_i_y_i}</code></div>
+                    ))}
+                    <div style={{ marginTop: '12px', padding: '8px', background: '#c0c0c0', border: '1px solid #808080' }}>
+                      <strong>Polinomio final aproximado P(x) =</strong>
+                      <div style={{ wordBreak: 'break-all', marginTop: '6px', fontFamily: 'monospace', color: '#000080', fontWeight: 'bold' }}>{result.polinomio}</div>
+                      <p style={{ marginTop: '6px' }}>Grado: {result.grado}</p>
+                    </div>
+                  </div>
+                )}
 
-              {result.x_eval !== undefined && (
-                <div className="result-box">
-                  <h3>Evaluacion en x = {result.x_eval}</h3>
-                  <p><strong>P({result.x_eval}) ≈ {result.P_eval}</strong></p>
-                  {result.f_eval !== undefined && (
-                    <>
-                      <p>f({result.x_eval}) = {result.f_eval}</p>
-                      <p>Error local: {result.error_local}</p>
-                    </>
-                  )}
-                </div>
-              )}
+                {result.x_eval !== undefined && (
+                  <div className="result-box">
+                    <h3 style={{ margin: '0 0 10px 0', color: '#000080' }}>--- 3. Error Local en {result.x_eval} ---</h3>
+                    {result.f_eval !== undefined ? (
+                      <div style={{ fontFamily: 'monospace' }}>
+                        <p>f({result.x_eval}) = {result.f_eval}</p><p>P({result.x_eval}) = {result.P_eval}</p><p style={{ marginTop: '8px', fontWeight: 'bold', color: '#800000' }}>Error Local = |f({result.x_eval}) - P({result.x_eval})| = {result.error_local}</p>
+                      </div>
+                    ) : (<p><strong>P({result.x_eval}) = {result.P_eval}</strong></p>)}
+                  </div>
+                )}
 
-              <div className="result-box">
-                <p>Metodo: {result.metodo}</p>
-                <p>Numero de puntos: {result.puntos?.length || 0}</p>
+                {result.x_eval !== undefined && modo === 'caso1' && result.analisis_error && (
+                  <>
+                    <div className="result-box">
+                      <h3 style={{ margin: '0 0 10px 0', color: '#000080' }}>--- 4. Cota de Error Global ---</h3>
+                      <div style={{ fontFamily: 'monospace', lineHeight: '1.6' }}>
+                        <p>Necesito la derivada de orden {result.analisis_error.derivada_orden} porque el polinomio es de grado {result.grado} (hay {result.puntos.length} puntos).</p>
+                        <p>Derivada {result.analisis_error.derivada_orden} de f(x) = {result.analisis_error.derivada_expr}</p>
+                        <p>Máximo de la derivada en el intervalo ~= {result.analisis_error.max_derivada.toFixed(6)}</p>
+                        <p>Máximo de |g(x)| en el intervalo ~= {result.analisis_error.max_g.toFixed(6)}</p>
+                        <p style={{ marginTop: '8px' }}>Cota de Error Global → ({result.analisis_error.max_derivada.toFixed(6)} / {result.analisis_error.factorial}) * {result.analisis_error.max_g.toFixed(6)} = <strong style={{ color: '#000080' }}>{result.analisis_error.cota_global.toFixed(6)}</strong></p>
+                      </div>
+                    </div>
+
+                    <div className="result-box" style={{ background: result.analisis_error.exito ? '#e6ffe6' : '#ffe6e6', border: `2px solid ${result.analisis_error.exito ? '#008000' : '#cc0000'}` }}>
+                      <h3 style={{ margin: '0 0 10px 0', color: '#000080' }}>--- 5. Demostración Final ---</h3>
+                      <p style={{ fontSize: '14px', fontWeight: 'bold', color: result.analisis_error.exito ? '#008000' : '#cc0000' }}>
+                        {result.analisis_error.exito ? '¡Éxito!' : '¡Fallo!'} Cota global ({result.analisis_error.cota_global.toFixed(6)}) {result.analisis_error.exito ? '≥' : '<'} Error Local ({result.error_local.toFixed(6)})
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}

@@ -42,7 +42,11 @@ export default function IterationsTable({ iterations, title = "Tabla de Iteracio
                   border: '1px solid #ddd',
                   textAlign: typeof row[header] === 'number' ? 'right' : 'left'
                 }}>
-                  {typeof row[header] === 'number' ? row[header].toFixed(6) : row[header]}
+                  {typeof row[header] === 'number' 
+                    ? header === 'i' 
+                      ? Math.round(row[header])
+                      : row[header].toFixed(6)
+                    : row[header]}
                 </td>
               ))}
             </tr>

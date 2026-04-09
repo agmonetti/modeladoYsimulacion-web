@@ -7,7 +7,7 @@ import '../styles/Method.css'
 export default function Differentiation() {
   const [input, setInput] = useState({
     func_str: 'sin(x)',
-    x_val: '0',
+    x_val: 'pi/4', // Ejemplificamos con texto matemático por defecto
     h: '1e-5',
     compare_exact: true,
     precision: '8'
@@ -16,6 +16,21 @@ export default function Differentiation() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // SÚPER TRADUCTOR MATEMÁTICO (Convierte pi/4 -> 0.785...)
+  const parseMathExpr = (expr: string): number => {
+    if (!expr || expr.trim() === '') return NaN;
+    try {
+      const safeExpr = expr
+        .replace(/\bpi\b/gi, 'Math.PI')
+        .replace(/\be\b/gi, 'Math.E')
+        .replace(/\^/g, '**');
+      const res = new Function(`return ${safeExpr}`)();
+      return Number(res);
+    } catch {
+      return NaN;
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -23,10 +38,18 @@ export default function Differentiation() {
     setResult(null)
 
     try {
+      // Parseamos los textos a números reales
+      const x_val_parsed = parseMathExpr(input.x_val);
+      const h_parsed = parseMathExpr(input.h);
+
+      if (isNaN(x_val_parsed) || isNaN(h_parsed)) {
+        throw new Error("El punto x o el paso h contienen expresiones inválidas (ej. use pi/4 o 1/3)");
+      }
+
       const payload = {
         func_str: input.func_str,
-        x_val: parseFloat(input.x_val),
-        h: parseFloat(input.h),
+        x_val: x_val_parsed,
+        h: h_parsed,
         precision: parseInt(input.precision),
         compare_exact: input.compare_exact
       }
@@ -34,7 +57,7 @@ export default function Differentiation() {
       const response = await differentiationService.diferenciasFinitas(payload)
       setResult(response.data)
     } catch (error: any) {
-      setError(error.response?.data?.detail || String(error))
+      setError(error.message || error.response?.data?.detail || String(error))
     } finally {
       setLoading(false)
     }
@@ -42,11 +65,24 @@ export default function Differentiation() {
 
   const generateDerivativePlot = () => {
     try {
-      const x_val = parseFloat(input.x_val)
-      const func_str = input.func_str
-      const h = parseFloat(input.h)
+      const x_val = parseMathExpr(input.x_val)
+      if (isNaN(x_val)) return [];
 
-      const func = new Function('x', `return ${func_str.replace(/\^/g, '**')}`)
+      const func_str = input.func_str.replace(/sen/gi, 'sin')
+
+      // Traductor para que JS pueda graficar sin problemas
+      const jsFuncStr = func_str
+        .replace(/\^/g, '**')
+        .replace(/\bsin\(/g, 'Math.sin(')
+        .replace(/\bcos\(/g, 'Math.cos(')
+        .replace(/\btan\(/g, 'Math.tan(')
+        .replace(/\bexp\(/g, 'Math.exp(')
+        .replace(/\blog\(/g, 'Math.log(')
+        .replace(/\bsqrt\(/g, 'Math.sqrt(')
+        .replace(/\bpi\b/g, 'Math.PI')
+        .replace(/\be\b/g, 'Math.E');
+
+      const func = new Function('x', `return ${jsFuncStr}`)
 
       // Generar puntos alrededor de x_val
       const range = 2
@@ -124,16 +160,18 @@ export default function Differentiation() {
 
             <div className="form-group">
               <label>Punto x:</label>
+              {/* CAMBIADO de type="number" a type="text" para aceptar fracciones y constantes */}
               <input
-                type="number"
-                step="0.01"
+                type="text"
                 value={input.x_val}
                 onChange={(e) => setInput({...input, x_val: e.target.value})}
               />
+              <small>Ej: pi/4, 1/3, 0.5</small>
             </div>
 
             <div className="form-group">
               <label>Paso h:</label>
+              {/* CAMBIADO de type="number" a type="text" */}
               <input
                 type="text"
                 value={input.h}
@@ -184,7 +222,7 @@ export default function Differentiation() {
               <div className="result-box">
                 <h3>Primera Derivada</h3>
                 <p><strong>Numerica:</strong> {result.primera_derivada.aproximada}</p>
-                {input.compare_exact && result.primera_derivada.exacta && (
+                {input.compare_exact && result.primera_derivada.exacta !== undefined && (
                   <>
                     <p><strong>Exacta:</strong> {result.primera_derivada.exacta}</p>
                     <p><strong>Error:</strong> {result.primera_derivada.error}</p>
@@ -196,7 +234,7 @@ export default function Differentiation() {
               <div className="result-box">
                 <h3>Segunda Derivada</h3>
                 <p><strong>Numerica:</strong> {result.segunda_derivada.aproximada}</p>
-                {input.compare_exact && result.segunda_derivada.exacta && (
+                {input.compare_exact && result.segunda_derivada.exacta !== undefined && (
                   <>
                     <p><strong>Exacta:</strong> {result.segunda_derivada.exacta}</p>
                     <p><strong>Error:</strong> {result.segunda_derivada.error}</p>
@@ -206,7 +244,7 @@ export default function Differentiation() {
               </div>
 
               <div className="result-box">
-                <p>Punto: x = {result.x}</p>
+                <p>Punto numérico evaluado: x = {result.x}</p>
                 <p>Paso: h = {result.h}</p>
               </div>
             </>
