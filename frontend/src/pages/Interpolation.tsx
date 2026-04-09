@@ -161,9 +161,13 @@ export default function Interpolation() {
             <li><strong>Caso 1:</strong> La función está dada, entonces no hacen falta los puntos_y ya que se calculan. Hace falta la función, los puntos_x y el x_eval.</li>
             <li><strong>Caso 2:</strong> No tengo la función, entonces hace falta puntos_x, puntos_y y x_eval.</li>
             <li><strong>Importante:</strong> El x_eval es opcional. Si lo dejas vacío, el resultado solo mostrará el polinomio final sin evaluar ningún punto específico.</li>
-            <li><strong>Caso a tener en cuenta: tengo los puntos_x y los puntos_y, pero un punto_y es una constante 'k' que no conozco, para hallarla, paso como x_eval el punto_x del que no tengo su punto_y </strong>  </li>
-            <li> ejemplo: x:[0,1,2,3,4] y: [1,2,b,2,3 ], entonces, parametros: x[0,1,3,4], y:[1,2,2,3] y x_val: 2 </li>
-            <li> resultado:P(2) = 2</li>
+            <li>
+              <strong>Caso a tener en cuenta: tengo los puntos_x y los puntos_y, pero un punto_y es una constante 'k' que no conozco, para hallarla, paso como x_eval el punto_x del que no tengo su punto_y</strong>
+              <ul>
+                <li>ejemplo: x:[0,1,2,3,4] y: [1,2,b,2,3], entonces, parametros: x[0,1,3,4], y:[1,2,2,3] y x_eval: 2</li>
+                <li>resultado: P(2) = 2</li>
+              </ul>
+            </li>
           </ul>
         </div>
       </div>
