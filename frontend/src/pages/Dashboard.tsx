@@ -20,14 +20,13 @@ export default function Dashboard() {
         </div>
 
         <div className="method-card" onClick={() => navigate('/differentiation')}>
-          <h3>Derivacion Numerica</h3>
-          <p>Diferencias Finitas</p>
-          <small>Calcula f'(x) y f''(x) numericamente</small>
+          <h3>Diferencias Finitas/h3>
+          <p>Calcula f'(x) y f''(x) numericamente</p>
         </div>
 
         <div className="method-card" onClick={() => navigate('/integration')}>
           <h3>Integracion Numerica</h3>
-          <p>Trapecio, Simpson 1/3, Simpson 3/8</p>
+          <p>Trapecio, Simpson 1/3, Simpson 3/8, Rectangulo Medio</p>
           <small>Aproxima el area bajo la curva</small>
         </div>
 
@@ -39,8 +38,8 @@ export default function Dashboard() {
 
         <div className="method-card" onClick={() => navigate('/monte-carlo')}>
           <h3>Monte Carlo</h3>
-          <p>Hit-or-Miss, Valor Promedio</p>
-          <small>Resoluciones estocasticas</small>
+          <p>Hit-or-Miss, Valor Promedio, Integrales Dobles y Triples</p>
+          <small>Resoluciones estocasticas con IC, seed, factor j (reduccion)</small>
         </div>
 
         <div className="method-card" onClick={() => navigate('/comparator')}>

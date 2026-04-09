@@ -54,15 +54,14 @@ Monte Carlo
 
 ## To DO
 - probar metodo a metodo
-	* probados: todos los de busqueda de raices y lagrange
+	* probados: todos los de busqueda de raices y lagrange e integraciones numericas
 - montecarlo: 2d: no muestra resultados completos. falta:
 	* tabla de iteracion (max 1000 valores)
 	* desviacion estandar
 	* IC
 	* integracion estimada
 	* grafico de los puntos
-- cada metodo debe mostrar la funcion que se quiere calcular o utilizar para el metodo, antes de ejecutarlo, para revisar que es la que se quiere trabajar, como funciona la visual de la formula.
-- agregar el boton de insercion de teclado matematico
+- agregar el boton de insercion de teclado matematico, como asi{}
 - Algo que detecte, es el los printeos de las tablas, no respetan el parametro de 'precision', quieor que lo hagan, ademas, estan respetando el parametro de 'tolerancia?
 - agregar comparaciones entre metodos:
 	* bnap
