@@ -1,15 +1,12 @@
-"""
-Endpoints para Monte Carlo
-"""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from app.methods.monte_carlo import MonteCarloService
 
 router = APIRouter(prefix="/api/monte-carlo", tags=["Monte Carlo"])
 
 class MonteCarloRequest(BaseModel):
-    method: Optional[str] = None  # hit_or_miss_1d, valor_promedio_1d, valor_promedio_2d, estadistico_1d
+    method: Optional[str] = None
     func_str: Optional[str] = None
     a: Optional[float] = None
     b: Optional[float] = None
@@ -19,93 +16,57 @@ class MonteCarloRequest(BaseModel):
     # Para 2D
     ya: Optional[float] = None
     yb: Optional[float] = None
+    # Para 3D
+    za: Optional[float] = None
+    zb: Optional[float] = None
     # Para estadístico
     M: Optional[int] = 50
     nivel_confianza: Optional[float] = 0.95
+    max_error: Optional[float] = None
     
     class Config:
-        extra = 'allow'  # Permitir campos adicionales
+        extra = 'allow'
 
 @router.post("/hit-or-miss-1d")
 def hit_or_miss_1d(req: MonteCarloRequest):
-    """Hit-or-Miss en 1D"""
     try:
-        if not req.func_str or req.a is None or req.b is None or req.N is None:
-            raise ValueError("Requiere: func_str, a, b, N")
         f = MonteCarloService.compilar_funcion(req.func_str, 'x')
-        precision = req.precision or 8
-        resultado = MonteCarloService.hit_or_miss_1d(
-            f, req.a, req.b, req.N, req.seed, precision
-        )
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return MonteCarloService.hit_or_miss_1d(f, req.a, req.b, req.N, req.seed, req.precision or 8)
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/valor-promedio-1d")
 def valor_promedio_1d(req: MonteCarloRequest):
-    """Valor Promedio en 1D"""
     try:
-        if not req.func_str or req.a is None or req.b is None or req.N is None:
-            raise ValueError("Requiere: func_str, a, b, N")
         f = MonteCarloService.compilar_funcion(req.func_str, 'x')
-        precision = req.precision or 8
-        resultado = MonteCarloService.valor_promedio_1d(
-            f, req.a, req.b, req.N, req.seed, precision
-        )
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return MonteCarloService.valor_promedio_1d(f, req.a, req.b, req.N, req.seed, req.precision or 8, req.nivel_confianza or 0.95)
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/convergencia-1d")
 def convergencia_1d(req: MonteCarloRequest):
-    """Convergencia del método Valor Promedio 1D"""
     try:
-        if not req.func_str or req.a is None or req.b is None or req.N is None:
-            raise ValueError("Requiere: func_str, a, b, N")
         f = MonteCarloService.compilar_funcion(req.func_str, 'x')
-        resultado = MonteCarloService.convergencia_1d(
-            f, req.a, req.b, req.N, req.seed
-        )
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return MonteCarloService.convergencia_1d(f, req.a, req.b, req.N, req.seed)
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/valor-promedio-2d")
 def valor_promedio_2d(req: MonteCarloRequest):
-    """Valor Promedio en 2D"""
     try:
-        if not req.func_str or req.a is None or req.b is None or req.ya is None or req.yb is None or req.N is None:
-            raise ValueError("Requiere: func_str, a, b, ya, yb, N")
         f = MonteCarloService.compilar_funcion(req.func_str, 'x y')
-        precision = req.precision or 8
-        resultado = MonteCarloService.valor_promedio_2d(
-            f, (req.a, req.b), (req.ya, req.yb), req.N, req.seed, precision
-        )
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return MonteCarloService.valor_promedio_2d(f, (req.a, req.b), (req.ya, req.yb), req.N, req.seed, req.precision or 8,req.nivel_confianza or 0.95)
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/valor-promedio-3d")
 def valor_promedio_3d(req: MonteCarloRequest):
-    """Valor Promedio en 3D"""
     try:
-        if not req.func_str or req.ya is None or req.yb is None:
-            raise ValueError("Requiere func_str, ya, yb, y debe expandirse para za, zb")
-        # Nota: Necesitaría za, zb en el modelo. Por ahora, asumir que vienen en params extras
-        raise HTTPException(status_code=501, detail="Endpoint 3D no implementado aún. Requiere za, zb en request")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        if req.za is None or req.zb is None:
+            raise ValueError("Las integrales triples requieren límites za y zb")
+        f = MonteCarloService.compilar_funcion(req.func_str, 'x y z')
+        return MonteCarloService.valor_promedio_3d(f, (req.a, req.b), (req.ya, req.yb), (req.za, req.zb), req.N, req.seed, req.precision or 8, req.nivel_confianza or 0.95)
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/estadistico-1d")
 def estadistico_1d(req: MonteCarloRequest):
-    """Análisis estadístico 1D"""
     try:
-        if not req.func_str:
-            raise ValueError("Requiere func_str")
         f = MonteCarloService.compilar_funcion(req.func_str, 'x')
-        resultado = MonteCarloService.analisis_estadistico_1d(
-            f, req.a, req.b, req.N, req.M or 50, req.nivel_confianza or 0.95, req.seed, req.precision
-        )
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return MonteCarloService.analisis_estadistico_1d(f, req.a, req.b, req.N, req.M or 50, req.nivel_confianza or 0.95, req.seed, req.precision or 8)
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))

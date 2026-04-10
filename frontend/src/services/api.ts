@@ -38,6 +38,7 @@ export const monteCarloService = {
   valorPromedio1d: (data: any) => api.post('/monte-carlo/valor-promedio-1d', data),
   convergencia1d: (data: any) => api.post('/monte-carlo/convergencia-1d', data),
   valorPromedio2d: (data: any) => api.post('/monte-carlo/valor-promedio-2d', data),
+  valorPromedio3d: (data: any) => api.post('/monte-carlo/valor-promedio-3d', data), // <-- ACÁ ESTÁ EL 3D CORRECTO
   estadistico: (data: any) => api.post('/monte-carlo/estadistico-1d', data),
 }
 
