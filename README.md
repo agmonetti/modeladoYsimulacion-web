@@ -18,9 +18,6 @@ pip install -r requirements.txt
 python run.py
 ```
 
-Backend corre en: http://localhost:8000
-Documentacion API: http://localhost:8000/docs
-
 ### Opcion 2: Frontend React (Terminal 2)
 
 ```bash
@@ -35,20 +32,15 @@ Frontend corre en: http://localhost:3000
 
 ## Metodos Disponibles
 
-Busqueda de Raices
-- Biseccion, Punto Fijo, Newton-Raphson, Aitken
+Busqueda de Raices - Biseccion, Punto Fijo, Newton-Raphson, Aitken
 
-Integracion Numerica  
-- Trapecio, Simpson 1/3, Simpson 3/8, Rectangulo
+Integracion Numerica  - Trapecio, Simpson 1/3, Simpson 3/8, Rectangulo
 
-Derivacion
-- Diferencias finitas (1ra y 2da derivada)
+Derivacion - Diferencias finitas (1ra y 2da derivada)
 
-Interpolacion
-- Polinomio de Lagrange
+Interpolacion - Polinomio de Lagrange
 
-Monte Carlo
-- Hit-or-Miss, Valor Promedio
+Monte Carlo - Hit-or-Miss, Valor Promedio, Convergencia, 1D, 2D, 3D
 
 ---
 
