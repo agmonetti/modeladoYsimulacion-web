@@ -6,6 +6,7 @@ Derivación Numérica - Diferencias Finitas
 import sympy as sp
 import warnings
 from typing import Dict
+from typing import Dict, Callable
 
 class DifferentiationService:
     
