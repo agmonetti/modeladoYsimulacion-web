@@ -28,6 +28,18 @@ npm run dev
 
 Frontend corre en: http://localhost:3000
 
+### Opcion 3: Docker
+
+```bash
+# Primera vez (construye las imágenes)
+docker-compose up --build
+
+# Próximas veces
+docker-compose up
+```
+
+Accede en: http://localhost (Frontend) y http://localhost:8000 (API)
+
 ---
 
 ## Metodos Disponibles
