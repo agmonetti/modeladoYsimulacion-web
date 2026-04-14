@@ -7,17 +7,19 @@
   display: flex;
   height: 100vh;
   width: 100vw;
+  max-width: 100vw;
   margin: 0;
   padding: 0;
   /* Este es el color verde esmeralda clásico de fondo de Windows 95 */
   background-color: #008080; 
+  overflow-x: hidden;
 }
 
 .sidebar {
   width: 250px;
   background-color: #c0c0c0;
   padding: 6px;
-  margin: 0; /* ASEGURATE DE QUE ESTO ESTÉ EN 0 */
+  margin: 0; 
   display: flex;
   flex-direction: column;
   border-right: 2px solid;
@@ -28,7 +30,7 @@
 .logo h2 {
   margin: 0 0 10px 0;
   padding: 4px 6px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: bold;
   background: linear-gradient(90deg, #000080 0%, #1084d7 100%);
   color: white;
@@ -53,7 +55,7 @@
 
 /* Separadores estilo "Etched" (Tallados en el plástico) clásico de Win95 */
 .nav-menu .section-title {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: bold;
   margin: 12px 6px 4px 6px;
   padding: 0 0 2px 0;
@@ -76,7 +78,7 @@
   display: block;
   padding: 4px 6px 4px 14px; 
   margin: 2px 6px;
-  font-size: 12px;
+  font-size: 14px;
   border: 1px dotted transparent;
 }
 
@@ -86,10 +88,93 @@
   color: white;
   border: 1px dotted #ffff00;
 }
+
+/* Sello de seguridad para el área principal de métodos */
 .main-content {
   flex: 1;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: 6px;
+  padding: 10px;
   background-color: #c0c0c0;
 }
 
+/* =========================================
+   ADAPTACIÓN MOBILE (Responsive)
+   ========================================= */
+
+.mobile-header {
+  display: none; /* Oculto por defecto en monitores */
+  background-color: #000080; /* Barra superior azul clásica */
+  padding: 6px;
+  border-bottom: 2px solid;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-btn {
+  background-color: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.menu-btn:active {
+  border-color: #808080 #dfdfdf #dfdfdf #808080;
+}
+
+.mobile-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: white;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* Reglas mágicas cuando la pantalla es menor a 768px (Celulares) */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column; /* Apila el header nuevo arriba del contenido principal */
+  }
+
+  .main-content {
+    padding: 6px;
+  }
+
+  .mobile-header {
+    display: flex; /* Hace visible la barra de menú */
+    z-index: 10;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -260px; /* La barra arranca escondida a la izquierda */
+    height: 100vh;
+    z-index: 100;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+  }
+
+  .sidebar.open {
+    left: 0; /* Aparece deslizándose cuando tocamos el botón */
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+  }
+}

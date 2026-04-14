@@ -58,11 +58,16 @@ Monte Carlo - Hit-or-Miss, Valor Promedio, Convergencia, 1D, 2D, 3D
 ---
 
 ## To DO
-- ~metodos de integracion tienen duplicados los parametros de limites y n.~
 - probar montecarlo a full
 - terminar de corroborar todos los metodos
-- barra lateral izquierda, agrandar letra (?)
-- mobile display (? - analizar rentabilidad)
+- ~mobile display iniciada:
+    imporante tratar:
+    * Sidebar
+    * los graficos y tablas
+    * grillas de parametros~
+
+- ~metodos de integracion tienen duplicados los parametros de limites y n.~
+- ~barra lateral izquierda, agrandar letra~
 - ~agregar comparacion de misma funcion de montecarlo en busca de reducir el error en un valor 'j'~ - reprecated
 - ~dejar diferencias finitas funcional al 100%.~
 - ~tratar la 'tolerancia' y 'precision' de las tablas iterativas.~

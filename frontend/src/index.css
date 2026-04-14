@@ -2,15 +2,17 @@
 * {
   margin: 0;
   padding: 0;
+  /* El sello de seguridad maestro: el padding y border se incluyen en el 100% del ancho */
   box-sizing: border-box;
 }
 
 html, body, #root {
   width: 100%;
+  max-width: 100vw;
   height: 100vh;
   /* El color de fondo verde esmeralda mítico de Windows 95 */
   background-color: #008080; 
   /* Forzamos la fuente retro en toda la página */
   font-family: 'MS Sans Serif', 'Arial', sans-serif;
-  overflow: hidden; /* Evita barras de scroll dobles, las manejamos en los componentes */
+  overflow-x: hidden; /* Prohibido el scroll horizontal en el nivel más alto */
 }
