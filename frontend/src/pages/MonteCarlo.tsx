@@ -172,9 +172,9 @@ export default function MonteCarlo() {
 
       let encabezado_escala = `Muestras por Réplica (N) = ${result.N}\nTotal de Réplicas (M) = ${result.M}\n`;
       if (method === 'hit-or-miss-1d') encabezado_escala = `Área de la Caja = ${result.area_caja}\nAciertos = ${result.n_exitos}\nDardos (N) = ${result.N}\n`;
-      if (method === 'valor-promedio-1d') encabezado_escala = `Escala (Largo) = ${result.escala}\n`;
-      if (method === 'valor-promedio-2d') encabezado_escala = `Escala (Área) = ${result.escala}\n`;
-      if (method === 'valor-promedio-3d') encabezado_escala = `Escala (Volumen) = ${result.escala}\n`;
+      if (method === 'valor-promedio-1d') encabezado_escala = `Escala (Largo) = ${result.escala}\nDardos (N) = ${result.N}\n`;
+      if (method === 'valor-promedio-2d') encabezado_escala = `Escala (Área) = ${result.escala}\nDardos (N) = ${result.N}\n`;
+      if (method === 'valor-promedio-3d') encabezado_escala = `Escala (Volumen) = ${result.escala}\nDardos (N) = ${result.N}\n`;
 
       return (
         <div style={{ backgroundColor: '#1e1e1e', color: '#00ff00', padding: '15px', fontFamily: 'monospace', borderRadius: '6px', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
