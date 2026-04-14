@@ -11,7 +11,7 @@ export default function Integration() {
   const [input, setInput] = useState({
     func_str: 'sin(x)',
     a: '0',
-    b: 'pi',
+    b: '1',
     n: '4',
     precision: '8'
   })
@@ -262,16 +262,6 @@ const theories: Record<string, any> = {
                   onClear={() => setInput({ ...input, func_str: '' })} 
                 />
               )}
-            </div>
-
-            {/* Layout de grilla para los límites y n */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="form-group"><label>Límite a:</label><input type="number" step="any" value={input.a} onChange={(e) => setInput({...input, a: e.target.value})} /></div>
-              <div className="form-group"><label>Límite b:</label><input type="number" step="any" value={input.b} onChange={(e) => setInput({...input, b: e.target.value})} /></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="form-group"><label>Subintervalos (n):</label><input type="number" value={input.n} onChange={(e) => setInput({...input, n: e.target.value})} /></div>
-              <div className="form-group"><label>Decimales:</label><input type="number" value={input.precision} onChange={(e) => setInput({...input, precision: e.target.value})} /></div>
             </div>
 
             <div className="form-group">

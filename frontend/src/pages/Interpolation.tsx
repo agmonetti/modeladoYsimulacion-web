@@ -170,8 +170,11 @@ export default function Interpolation() {
     nombre: 'Interpolación de Lagrange',
     descripcion: 'Construye un polinomio de grado n-1 que pasa por n puntos dados.',
     formula: 'P(x) = \\sum_{i=0}^{n} y_i L_i(x), \\quad L_i(x) = \\prod_{\\begin{smallmatrix}  j=0 \\\\  i!=j \\end{smallmatrix}}^{n} \\frac{x - x_j}{x_i - x_j}',
-    condiciones: 'Exacta en los puntos conocidos. Error en extrapolación puede ser grande fuera del rango.'
+    condicionesCaso1: 'Se usa cuando conoces la función original f(x) y quieres interpolar a partir de sus valores en los puntos dados. Si no se proporciona el parametro {Evaluar en x} solo se halla el polinomio',
+    condicionesCaso2: 'Se usa cuando no conoces la función original y solo tienes los pares (x, y). Si no se proporciona el parametro {Evaluar en x} solo se halla el polinomio.'
   }
+
+  const condicionesActuales = modo === 'caso1' ? theory.condicionesCaso1 : theory.condicionesCaso2
 
   return (
     <div className="method-page">
@@ -181,7 +184,7 @@ export default function Interpolation() {
         <h3>Teoria: {theory.nombre}</h3>
         <p><strong>Descripcion:</strong> {theory.descripcion}</p>
         <FormulaDisplay formula={theory.formula} title="Formula:" />
-        <p><strong>Condiciones:</strong> {theory.condiciones}</p>
+        <p><strong>Condiciones:</strong> {condicionesActuales}</p>
       </div>
 
       <div className="method-container">
@@ -240,7 +243,6 @@ export default function Interpolation() {
                   </div>
                 )}
                 {showKeyboard && <MathKeyboard onInsert={handleInsert} onClear={handleClear} />}
-                <small>Ej: sin(x), exp(x), x**2</small>
               </div>
             )}
 
