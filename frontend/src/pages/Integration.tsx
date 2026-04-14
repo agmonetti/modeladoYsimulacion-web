@@ -169,6 +169,7 @@ const theories: Record<string, any> = {
     'rectangulo-compuesto': {
       nombre: 'Rectángulo Medio (Compuesto)',
       descripcion: 'Aproxima el área usando rectángulos cuya altura es el punto medio del subintervalo.',
+      rescate: 'Si el método topa con una indeterminación al evaluar un punto (nodo o punto medio), el sistema calcula automáticamente su límite matemático exacto para evitar el colapso de la integral.',
       formula: '\\begin{aligned} \\int_a^b f(x)dx &\\approx h \\sum_{i=0}^{n-1} f\\left( a + \\left(i + \\frac{1}{2}\\right)h \\right) \\\\ h &= \\frac{b-a}{n} \\\\ E_T &= \\frac{(b-a)^3}{24n^2} f^{\\prime\\prime}(\\xi) \\end{aligned}',
     },
     'trapecio-simple': {
@@ -179,6 +180,7 @@ const theories: Record<string, any> = {
     'trapecio-compuesto': {
       nombre: 'Regla del Trapecio (Compuesto)',
       descripcion: 'Aproxima el área dividiendo el rango en n trapecios.',
+      rescate: 'Si el método topa con una indeterminación al evaluar un punto (nodo o punto medio), el sistema calcula automáticamente su límite matemático exacto para evitar el colapso de la integral.',
       formula: '\\begin{aligned} \\int_a^b f(x)dx &\\approx \\frac{h}{2} \\left( f(a) + 2\\sum_{i=1}^{n-1}f(a+ih) + f(b) \\right) \\\\ h &= \\frac{b-a}{n} \\\\ E_T &= -\\frac{(b-a)^3}{12n^2} f^{\\prime\\prime}(\\xi) \\end{aligned}',
     },
     'simpson13-simple': {
@@ -189,6 +191,7 @@ const theories: Record<string, any> = {
     'simpson13-compuesto': {
       nombre: 'Simpson 1/3 (Compuesto)',
       descripcion: 'Aproxima el área sumando múltiples parábolas consecutivas. Requiere n PAR.',
+      rescate: 'Si el método topa con una indeterminación al evaluar un punto (nodo o punto medio), el sistema calcula automáticamente su límite matemático exacto para evitar el colapso de la integral.',
       formula: '\\begin{aligned} \\int_a^b f(x)dx &\\approx \\frac{h}{3} \\left( f(a) + 4\\sum_{impares} f(a+ih) + 2\\sum_{pares} f(a+ih) + f(b) \\right) \\\\ h &= \\frac{b-a}{n} \\\\ E_T &= -\\frac{(b-a)^5}{180n^4} f^{(4)}(\\xi) \\end{aligned}',
     },
     'simpson38-simple': {
@@ -212,6 +215,10 @@ const theories: Record<string, any> = {
       <div className="theory-section">
         <h3>Teoria: {theory.nombre}</h3>
         <p><strong>Descripcion:</strong> {theory.descripcion}</p>
+        
+{theory.rescate && theory.rescate !== '' && (
+  <p><strong>Rescate matemático:</strong> {theory.rescate}</p>
+)}
         <FormulaDisplay formula={theory.formula} title="Formula de Cuadratura:" />
       </div>
 

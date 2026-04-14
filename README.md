@@ -60,12 +60,13 @@ Monte Carlo - Hit-or-Miss, Valor Promedio, Convergencia, 1D, 2D, 3D
 ## To DO
 - probar montecarlo a full
 - terminar de corroborar todos los metodos
+- metodo comparador de integraciones, no muestra si se tuvo que aplciar un rescate matematico
+
 - ~mobile display iniciada:
     imporante tratar:
     * Sidebar
     * los graficos y tablas
     * grillas de parametros~
-
 - ~metodos de integracion tienen duplicados los parametros de limites y n.~
 - ~barra lateral izquierda, agrandar letra~
 - ~agregar comparacion de misma funcion de montecarlo en busca de reducir el error en un valor 'j'~ - reprecated

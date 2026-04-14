@@ -352,6 +352,20 @@ const formatToLatex = (str: string) => {
                           Detalle: {nombres[key]}
                         </h3>
                         
+                      {res.notas && res.notas.length > 0 && (
+                          <div style={{ background: '#e0f7fa', borderLeft: '4px solid #00acc1', padding: '10px', marginBottom: '15px', borderRadius: '4px' }}>
+                            <h4 style={{ margin: '0 0 5px 0', color: '#006064', fontSize: '13px' }}>
+                              <span style={{ fontSize: '15px', marginRight: '5px' }}>ℹ</span> 
+                              Rescate Matemático
+                            </h4>
+                            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#004d40', fontFamily: 'sans-serif' }}>
+                              {res.notas.map((nota: string, idx: number) => (
+                                <li key={idx} style={{ marginBottom: '2px' }}>{nota}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
                         <div style={{ overflowX: 'auto', marginBottom: '15px' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85em', fontFamily: 'monospace' }}>
                             <thead style={{ backgroundColor: '#eee' }}>
