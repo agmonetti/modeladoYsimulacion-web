@@ -51,14 +51,17 @@ docker-compose up
 
 - Interpolación: Polinomio de Lagrange (con análisis de error global y local).
 
+- Ecuaciones Diferenciales Ordinarias (EDO): Método de Euler, Euler Mejorado (Heun) y Runge-Kutta de 4to Orden (RK4), con comparación contra solución exacta y error por paso.
+
 - Simulación Monte Carlo: Hit-or-Miss (1D), Valor Promedio (1D, 2D, 3D), Análisis Estadístico con Intervalos de Confianza y Factor de Reducción de Varianza.
 ---
 
 ## To DO
-- probar montecarlo a full
 - terminar de corroborar todos los metodos
 - revisar la teoria de los metodos
 
+- ~probar montecarlo a full~
+- ~revisar si se contempla indirecta o directamente la escala (b-a) en el calculo de los errores~
 - ~metodo comparador de integraciones, no muestra si se tuvo que aplciar un rescate matematico~
 - ~mobile display iniciada:~
     ~imporante tratar:~
