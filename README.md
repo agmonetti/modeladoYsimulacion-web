@@ -57,7 +57,8 @@ docker-compose up
 ## To DO
 - probar montecarlo a full
 - terminar de corroborar todos los metodos
-- 
+- revisar la teoria de los metodos
+
 - ~metodo comparador de integraciones, no muestra si se tuvo que aplciar un rescate matematico~
 - ~mobile display iniciada:~
     ~imporante tratar:~

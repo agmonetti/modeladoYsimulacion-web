@@ -7,6 +7,7 @@ import Integration from './pages/Integration'
 import Interpolation from './pages/Interpolation'
 import MonteCarlo from './pages/MonteCarlo'
 import Comparator from './pages/Comparator'
+import EDO from './pages/EDO'
 import './App.css'
 
 function App() {
@@ -51,6 +52,9 @@ function App() {
           
           <li className="section-title">Monte Carlo</li>
           <li><Link to="/monte-carlo" onClick={closeSidebar}>Simulacion</Link></li>
+
+          <li className="section-title">Ecuaciones Diferenciales</li>
+          <li><Link to="/edo" onClick={closeSidebar}>Euler / Heun / RK4</Link></li>
           
           <li className="section-title">Herramientas</li>
           <li><Link to="/comparator" onClick={closeSidebar}>Comparador</Link></li>
@@ -66,6 +70,8 @@ function App() {
           <Route path="/interpolation" element={<Interpolation />} />
           <Route path="/monte-carlo" element={<MonteCarlo />} />
           <Route path="/comparator" element={<Comparator />} />
+          {/* Agregamos la ruta para EDOs */}
+          <Route path="/edo" element={<EDO />} />
         </Routes>
       </main>
     </div>

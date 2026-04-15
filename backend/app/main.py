@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 import os
 
-from app.api import root_finding, differentiation, integration, interpolation, monte_carlo
+from app.api import root_finding, differentiation, integration, interpolation, monte_carlo, ode
 
 # Initialize FastAPI
 app = FastAPI(
@@ -31,6 +31,7 @@ app.include_router(differentiation.router)
 app.include_router(integration.router)
 app.include_router(interpolation.router)
 app.include_router(monte_carlo.router)
+app.include_router(ode.router) 
 
 @app.get("/")
 def read_root():
@@ -42,7 +43,8 @@ def read_root():
             "differentiation": "/api/differentiation",
             "integration": "/api/integration",
             "interpolation": "/api/interpolation",
-            "monte_carlo": "/api/monte-carlo"
+            "monte_carlo": "/api/monte-carlo",
+            "ode": "/api/ode"
         },
         "docs": "/docs",
         "openapi": "/openapi.json"

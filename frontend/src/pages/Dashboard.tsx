@@ -42,6 +42,12 @@ export default function Dashboard() {
           <small>Resoluciones estocasticas con IC, seed, factor j (reduccion)</small>
         </div>
 
+        <div className="method-card" onClick={() => navigate('/edo')}>
+          <h3>Ecuaciones Diferenciales</h3>
+          <p>Euler, Heun, Runge-Kutta 4</p>
+          <small>Resuelve EDOs con condiciones iniciales</small>
+        </div>
+
         <div className="method-card" onClick={() => navigate('/comparator')}>
           <h3>Comparador</h3>
           <p>Analisis comparativo</p>
