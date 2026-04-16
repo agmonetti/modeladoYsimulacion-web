@@ -39,7 +39,6 @@ export default function EDO() {
     return latex;
   };
 
-  // TRADUCTOR MATEMÁTICO: Resuelve expresiones como "pi/10", "e", "sqrt(2)", etc.
   const parseMathExpr = (expr: string): number => {
     if (!expr || expr.trim() === '') return NaN;
     try {
@@ -61,7 +60,6 @@ export default function EDO() {
     setResultado(null);
 
     try {
-      // Parseamos todos los parámetros numéricos antes de enviar al backend
       const x0_val = parseMathExpr(input.x0);
       const y0_val = parseMathExpr(input.y0);
       const xf_val = parseMathExpr(input.xf);
@@ -137,7 +135,10 @@ export default function EDO() {
           <p><strong>Problema:</strong> {theory.limitacion}</p>
         )}
 
-        <FormulaDisplay formula={theory.formula} title="Fórmula del Método:" />
+        {/* BLINDAJE RESPONSIVO */}
+        <div style={{ overflowX: 'auto', width: '100%', paddingBottom: '10px' }}>
+          <FormulaDisplay formula={theory.formula} title="Fórmula del Método:" />
+        </div>
 
         {theory.variables && (
           <ul style={{ marginBottom: '15px', paddingLeft: '20px' }}>
@@ -181,7 +182,8 @@ export default function EDO() {
                 placeholder="Ej: x + y"
               />
               {input.func_str && (
-                <div style={{ marginTop: '5px', padding: '8px', backgroundColor: '#f1f8ff', border: '1px dashed #b6d4fe', borderRadius: '4px', display: 'flex', justifyContent: 'center', minHeight: '40px', alignItems: 'center' }}>
+                /* BLINDAJE RESPONSIVO */
+                <div style={{ marginTop: '5px', padding: '8px', backgroundColor: '#f1f8ff', border: '1px dashed #b6d4fe', borderRadius: '4px', display: 'flex', justifyContent: 'center', minHeight: '40px', alignItems: 'center', overflowX: 'auto', width: '100%' }}>
                   <FormulaDisplay formula={`y' = ${formatToLatex(input.func_str)}`} />
                 </div>
               )}
@@ -221,13 +223,12 @@ export default function EDO() {
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Calculando...' : 'Aproximar EDO'}
+              {loading ? 'Calculando...' : 'Ejecutar EDO'}
             </button>
           </form>
         </div>
 
         <div className="result-section">
-          {/* ... (La sección de resultados se mantiene idéntica) ... */}
           <h2>Desarrollo y Resultados</h2>
           
           {error && (
@@ -248,7 +249,8 @@ export default function EDO() {
                 
                 <div className="result-box">
                   <h3 style={{ margin: '0 0 8px 0', color: '#000080', fontSize: '15px' }}>--- Solución Exacta Analítica ---</h3>
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                  {/* BLINDAJE RESPONSIVO */}
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px', overflowX: 'auto', width: '100%' }}>
                     <FormulaDisplay formula={`Y_r(x) = ${formatToLatex(resultado.solucion_exacta_str)}`} />
                   </div>
                 </div>
