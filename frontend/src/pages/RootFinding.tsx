@@ -223,7 +223,7 @@ export default function RootFinding() {
     'newton-raphson': {
       nombre: 'Metodo de Newton-Raphson',
       formula_latex: 'x_{n+1} = x_n - \\frac{f(x_n)}{f\'(x_n)}',
-      parametros: ['f(x): Funcion', 'x0: Inicial', 'tolerancia']
+      parametros: ['f(x): Funcion', 'x0: Semilla inicial', 'tolerancia']
     },
     aitken: {
       nombre: 'Aceleracion de Aitken',
@@ -348,10 +348,10 @@ export default function RootFinding() {
                   <div className="form-group"><label>a:</label><input type="number" step="any" value={input.a} onChange={(e) => setInput({...input, a: e.target.value})} /></div>
                   <div className="form-group"><label>b:</label><input type="number" step="any" value={input.b} onChange={(e) => setInput({...input, b: e.target.value})} /></div>
                 </div>
-                <div className="form-group"><label>x0 (Valor Inicial):</label><input type="number" step="any" value={input.x0} onChange={(e) => setInput({...input, x0: e.target.value})} /></div>
+                <div className="form-group"><label>Semilla inicial (x0):</label><input type="number" step="any" value={input.x0} onChange={(e) => setInput({...input, x0: e.target.value})} /></div>
               </>
             ) : (
-              <div className="form-group"><label>x0 (Valor Inicial):</label><input type="number" step="any" value={input.x0} onChange={(e) => setInput({...input, x0: e.target.value})} /></div>
+              <div className="form-group"><label>Semilla inicial (x0):</label><input type="number" step="any" value={input.x0} onChange={(e) => setInput({...input, x0: e.target.value})} /></div>
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

@@ -45,7 +45,7 @@ def valor_promedio_1d(req: MonteCarloRequest):
 def convergencia_1d(req: MonteCarloRequest):
     try:
         f = MonteCarloService.compilar_funcion(req.func_str, 'x')
-        return MonteCarloService.convergencia_1d(f, req.a, req.b, req.N, req.seed)
+        return MonteCarloService.convergencia_1d(f, req.a, req.b, req.N, req.seed, req.precision or 8)
     except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/valor-promedio-2d")

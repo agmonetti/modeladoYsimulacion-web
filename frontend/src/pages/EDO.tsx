@@ -13,6 +13,7 @@ export default function EDO() {
     y0: '1',
     xf: '1',
     h: '0.1',
+    tol: '',
     precision: '5'
   });
 
@@ -69,13 +70,26 @@ export default function EDO() {
         throw new Error("Uno o más parámetros (x0, y0, xf, h) contienen expresiones matemáticas inválidas.");
       }
 
+      const precisionVal = parseInt(input.precision);
+      const safePrecision = Number.isFinite(precisionVal)
+        ? Math.min(15, Math.max(1, precisionVal))
+        : 5;
+
+      const tolRaw = input.tol.trim();
+      const tolVal = tolRaw ? parseMathExpr(tolRaw) : undefined;
+      if (tolRaw && (!Number.isFinite(tolVal) || (tolVal as number) <= 0)) {
+        throw new Error("La tolerancia debe ser positiva y puede ingresarse como expresión (ej: 10^-1, 1e-2).");
+      }
+
       const res = await edoService.resolver({
         metodo: method,
         ecuacion: input.func_str,
         x0: x0_val,
         y0: y0_val,
         xf: xf_val,
-        h: h_val
+        h: h_val,
+        tol: tolVal,
+        precision: safePrecision
       });
       setResultado(res.data);
     } catch (err: any) {
@@ -218,6 +232,16 @@ export default function EDO() {
             </div>
 
             <div className="form-group">
+              <label>Tolerancia (opcional):</label>
+              <input
+                type="text"
+                value={input.tol}
+                onChange={(e) => setInput({...input, tol: e.target.value})}
+                placeholder="Ej: 10^-1 o 1e-2"
+              />
+            </div>
+
+            <div className="form-group">
               <label>Decimales (precision):</label>
               <input type="number" min="1" max="15" value={input.precision} onChange={(e) => setInput({...input, precision: e.target.value})} />
             </div>
@@ -302,6 +326,11 @@ export default function EDO() {
                   <div style={{ fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.5' }}>
                     <p><strong>Valor Final Aproximado (y en x_f):</strong> {resultado.y_plot[resultado.y_plot.length - 1].toFixed(dec)}</p>
                     <p><strong>Paso (h):</strong> {resultado.h}</p>
+                    {resultado.tol !== null && resultado.tol !== undefined && (
+                      <p>
+                        <strong>Tolerancia:</strong> {resultado.tol} | <strong>Estado:</strong> {resultado.acepta_tolerancia ? 'ACEPTA' : 'NO ACEPTA'}
+                      </p>
+                    )}
                     <p style={{ marginTop: '8px', color: '#800000', fontWeight: 'bold' }}>
                       Error Final Acumulado: {resultado.tabla[resultado.tabla.length - 1].error.toExponential(4)}
                     </p>

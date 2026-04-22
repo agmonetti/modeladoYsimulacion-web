@@ -69,10 +69,44 @@ export default function MonteCarlo() {
 
     try {
       let response
+      const precisionVal = parseInt(input.precision);
+      const safePrecision = Number.isFinite(precisionVal)
+        ? Math.min(15, Math.max(1, precisionVal))
+        : 6;
+
+      const parseMathExpr = (expr: string): number => {
+        if (!expr || expr.trim() === '') return NaN;
+        try {
+          const safeExpr = expr
+            .replace(/\bpi\b/gi, 'Math.PI')
+            .replace(/\be\b/gi, 'Math.E')
+            .replace(/\^/g, '**');
+          const res = new Function(`return ${safeExpr}`)();
+          return Number(res);
+        } catch {
+          return NaN;
+        }
+      };
+
+      const parsedNivelConfianza = parseMathExpr(input.nivel_confianza);
+      if (!Number.isFinite(parsedNivelConfianza) || parsedNivelConfianza <= 0 || parsedNivelConfianza >= 1) {
+        throw new Error('El nivel de confianza debe estar entre 0 y 1.');
+      }
+
+      const parsedMaxError = input.max_error.trim() ? parseMathExpr(input.max_error) : undefined;
+      if (input.max_error.trim() && (!Number.isFinite(parsedMaxError) || (parsedMaxError as number) <= 0)) {
+        throw new Error("La tolerancia máxima debe ser positiva (ej: 10^-1, 1e-2).");
+      }
+
+      const parsedFactorJ = input.factor_j.trim() ? parseMathExpr(input.factor_j) : undefined;
+      if (input.factor_j.trim() && (!Number.isFinite(parsedFactorJ) || (parsedFactorJ as number) <= 0)) {
+        throw new Error("El factor j debe ser positivo (ej: 10^-1, 2, 5). ");
+      }
+
       const basePayload = {
         func_str: input.func_str, a: parseFloat(input.a), b: parseFloat(input.b),
         N: parseInt(input.N), seed: input.seed !== '' ? parseInt(input.seed) : undefined,
-        precision: parseInt(input.precision), nivel_confianza: parseFloat(input.nivel_confianza) 
+        precision: safePrecision, nivel_confianza: parsedNivelConfianza
       }
 
       switch(method) {
@@ -149,7 +183,17 @@ export default function MonteCarlo() {
 
     let analisis_j = "";
     if (input.factor_j.trim() !== "") {
-        const factor = parseFloat(input.factor_j);
+        const factor = (() => {
+          try {
+            const safeExpr = input.factor_j
+              .replace(/\bpi\b/gi, 'Math.PI')
+              .replace(/\be\b/gi, 'Math.E')
+              .replace(/\^/g, '**');
+            return Number(new Function(`return ${safeExpr}`)());
+          } catch {
+            return NaN;
+          }
+        })();
         if (!isNaN(factor) && factor > 0) {
             const n_requerido = Math.ceil(parseInt(input.N) * (factor ** 2));
             analisis_j = `\nPara reducir el error ${factor}x, se necesita N = ${n_requerido}`;
@@ -164,7 +208,17 @@ export default function MonteCarlo() {
       
       let validacion_texto = "";
       if (input.max_error.trim() !== "") {
-          const max_err = parseFloat(input.max_error);
+          const max_err = (() => {
+            try {
+              const safeExpr = input.max_error
+                .replace(/\bpi\b/gi, 'Math.PI')
+                .replace(/\be\b/gi, 'Math.E')
+                .replace(/\^/g, '**');
+              return Number(new Function(`return ${safeExpr}`)());
+            } catch {
+              return NaN;
+            }
+          })();
           validacion_texto = margen_error <= max_err 
             ? `Validación: ✓ CUMPLE (Error ${margen_error.toFixed(4)} <= ${max_err})\n` 
             : `Validación: ✗ NO CUMPLE (Error ${margen_error.toFixed(4)} > ${max_err})\n`;
@@ -311,13 +365,13 @@ ${validacion_texto}${analisis_j}`}
             {method !== 'convergencia-1d' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', padding: '10px', backgroundColor: '#e6ffe6', border: '1px solid #008000', borderRadius: '4px', marginTop: '10px' }}>
                  <div className="form-group" style={{margin: 0}}><label>Confianza (ej: 0.95):</label><input type="number" step="0.01" min="0.5" max="0.99" value={input.nivel_confianza} onChange={(e) => setInput({...input, nivel_confianza: e.target.value})} /></div>
-                 <div className="form-group" style={{margin: 0}}><label>Err. Máx (Opcional):</label><input type="number" step="0.01" value={input.max_error} onChange={(e) => setInput({...input, max_error: e.target.value})} /></div>
-                 <div className="form-group" style={{margin: 0}}><label>Factor 'j' (Opc):</label><input type="number" step="any" value={input.factor_j} onChange={(e) => setInput({...input, factor_j: e.target.value})} placeholder="Ej: 2"/></div>
+                  <div className="form-group" style={{margin: 0}}><label>Tolerancia máx (Opc):</label><input type="text" value={input.max_error} onChange={(e) => setInput({...input, max_error: e.target.value})} placeholder="Ej: 10^-1" /></div>
+                  <div className="form-group" style={{margin: 0}}><label>Factor 'j' (Opc):</label><input type="text" value={input.factor_j} onChange={(e) => setInput({...input, factor_j: e.target.value})} placeholder="Ej: 2 o 10^-1"/></div>
               </div>
             )}
 
             <div className="form-group">
-              <label>Decimales (Visual):</label>
+              <label>Decimales (Precisión):</label>
               <input type="number" value={input.precision} onChange={(e) => setInput({...input, precision: e.target.value})} />
             </div>
 

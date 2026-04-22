@@ -68,6 +68,8 @@ pytest
 ## To DO
 - terminar de corroborar todos los metodos
 - revisar la teoria de los metodos
+- agregar calculo de ET de los metodos que lo tienen, pero para calcularlo necesitan el simbolo raro de e/E.
+- agregar calculo de media muestral a la seccion de resultados de montecarlo
 
 - ~probar montecarlo a full~
 - ~revisar si se contempla indirecta o directamente la escala (b-a) en el calculo de los errores~

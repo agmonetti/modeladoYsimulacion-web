@@ -3,6 +3,16 @@ import sympy as sp
 import math
 
 class ODEService:
+
+    @staticmethod
+    def _round_numeric(value, precision):
+        if isinstance(value, dict):
+            return {k: ODEService._round_numeric(v, precision) for k, v in value.items()}
+        if isinstance(value, list):
+            return [ODEService._round_numeric(v, precision) for v in value]
+        if isinstance(value, (float, np.floating)):
+            return round(float(value), precision)
+        return value
     
     @staticmethod
     def resolver_edo_exacta(texto_dy_dx, x0_val, y0_val):
@@ -35,7 +45,7 @@ class ODEService:
         return sp.lambdify((x_sym, y_sym), sp.sympify(ecuacion_str_limpia, locals={'e': sp.E, 'pi': sp.pi}), 'numpy')
 
     @staticmethod
-    def ejecutar_metodo(metodo, ecuacion_str, x0, y0, xf, h):
+    def ejecutar_metodo(metodo, ecuacion_str, x0, y0, xf, h, precision=8, tol=None):
         """
         Orquestador principal. Ejecuta el método solicitado, 
         calcula la solución exacta, los errores y empaqueta todo para la API.
@@ -53,6 +63,7 @@ class ODEService:
             "ecuacion": ecuacion_str,
             "solucion_exacta_str": expr_exacta_str,
             "h": h,
+            "tol": tol,
             "tabla": [],
             "x_plot": x_values.tolist(),
             "y_exacta_plot": y_exacta.tolist()
@@ -122,4 +133,8 @@ class ODEService:
                 })
             resultado["y_plot"] = y_n.tolist()
 
-        return resultado
+        final_error = resultado["tabla"][-1]["error"] if resultado["tabla"] else None
+        resultado["acepta_tolerancia"] = bool(tol is not None and final_error is not None and final_error <= tol)
+
+        precision = max(1, min(int(precision), 15))
+        return ODEService._round_numeric(resultado, precision)

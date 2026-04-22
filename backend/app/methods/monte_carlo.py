@@ -103,7 +103,7 @@ class MonteCarloService:
 
 
     @staticmethod
-    def convergencia_1d(f, a: float, b: float, N: int, seed: int = None) -> Dict:
+    def convergencia_1d(f, a: float, b: float, N: int, seed: int = None, precision: int = 8) -> Dict:
         MonteCarloService.aplicar_semilla(seed)
         x_rand = np.random.uniform(a, b, N)
         with warnings.catch_warnings():
@@ -124,14 +124,14 @@ class MonteCarloService:
         # Muestreamos el historial logarítmicamente para no matar a Plotly
         step = max(1, N // 500)
         historial = [
-            {"N": int(i), "integral": float(integrales_acumuladas[i-1])} 
+            {"N": int(i), "integral": round(float(integrales_acumuladas[i-1]), precision)}
             for i in range(1, N+1, step)
         ]
 
         return {
             "metodo": "Convergencia 1D",
             "N": N,
-            "valor_exacto_gauss": float(valor_exacto),
+            "valor_exacto_gauss": round(float(valor_exacto), precision),
             "historial_convergencia": historial
         }
 

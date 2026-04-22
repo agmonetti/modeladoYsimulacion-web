@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 from app.methods.ode import ODEService
 
 router = APIRouter(prefix="/api/ode", tags=["Ecuaciones Diferenciales"])
@@ -11,15 +12,17 @@ class ODERequest(BaseModel):
     y0: float
     xf: float
     h: float
+    tol: Optional[float] = None
+    precision: int = 8
 
 @router.post("/resolver")
 def resolver_edo(req: ODERequest):
     try:
         if req.metodo == "comparador":
             # Ejecutamos los 3 métodos para la misma ecuación
-            euler = ODEService.ejecutar_metodo("euler", req.ecuacion, req.x0, req.y0, req.xf, req.h)
-            heun = ODEService.ejecutar_metodo("heun", req.ecuacion, req.x0, req.y0, req.xf, req.h)
-            rk4 = ODEService.ejecutar_metodo("rk4", req.ecuacion, req.x0, req.y0, req.xf, req.h)
+            euler = ODEService.ejecutar_metodo("euler", req.ecuacion, req.x0, req.y0, req.xf, req.h, req.precision, req.tol)
+            heun = ODEService.ejecutar_metodo("heun", req.ecuacion, req.x0, req.y0, req.xf, req.h, req.precision, req.tol)
+            rk4 = ODEService.ejecutar_metodo("rk4", req.ecuacion, req.x0, req.y0, req.xf, req.h, req.precision, req.tol)
             
             return {
                 "tipo": "comparador",
@@ -37,7 +40,7 @@ def resolver_edo(req: ODERequest):
             }
         else:
             # Ejecución individual
-            res = ODEService.ejecutar_metodo(req.metodo, req.ecuacion, req.x0, req.y0, req.xf, req.h)
+            res = ODEService.ejecutar_metodo(req.metodo, req.ecuacion, req.x0, req.y0, req.xf, req.h, req.precision, req.tol)
             res["tipo"] = "individual"
             return res
             
