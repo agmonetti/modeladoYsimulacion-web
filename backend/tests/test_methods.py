@@ -5,6 +5,7 @@ from app.methods.integration import IntegrationService
 from app.methods.differentiation import DifferentiationService
 from app.methods.interpolation import InterpolationService
 from app.methods.monte_carlo import MonteCarloService
+from app.methods.ode import ODEService
 
 # ==========================================
 # 1. PRUEBAS DE INTEGRACIÓN NUMÉRICA
@@ -128,3 +129,148 @@ def test_montecarlo_valor_promedio_deterministico():
     
     assert res["integral"] == pytest.approx(2.6666, rel=0.05)
     assert res["ic_inf"] < res["integral"] < res["ic_sup"] # Verifica que la integral esté dentro del IC
+
+
+# ==========================================
+# 6. PRUEBAS PARAMETRIZADAS (MÁS COBERTURA)
+# ==========================================
+
+@pytest.mark.parametrize(
+    "funcion,a,b,n,valor_esperado,rel_tol",
+    [
+        ("x", 0.0, 1.0, 2, 0.5, 1e-5),
+        ("x**2", 0.0, 1.0, 2, 1.0 / 3.0, 1e-5),
+        ("x**3", 0.0, 2.0, 2, 4.0, 1e-5),
+        ("exp(x)", 0.0, 1.0, 20, math.e - 1.0, 1e-4),
+    ],
+)
+def test_simpson_13_parametrizado(funcion, a, b, n, valor_esperado, rel_tol):
+    func = IntegrationService.compilar_funcion(funcion)
+    res = IntegrationService.simpson_13_compuesto(func, a, b, n=n, precision=8)
+    assert res["integral"] == pytest.approx(valor_esperado, rel=rel_tol)
+
+
+@pytest.mark.parametrize(
+    "funcion,a,b,raiz_esperada",
+    [
+        ("x**2 - 4", 0.0, 5.0, 2.0),
+        ("x**3 - 1", 0.0, 2.0, 1.0),
+        ("x - 0.25", 0.0, 1.0, 0.25),
+    ],
+)
+def test_biseccion_parametrizado(funcion, a, b, raiz_esperada):
+    f = RootFindingService.compilar_funcion(funcion)
+    res = RootFindingService.biseccion(f, a, b, tol=1e-8, max_iter=200, precision=8)
+    assert res["convergencia"] is True
+    assert res["raiz"] == pytest.approx(raiz_esperada, rel=1e-5)
+
+
+# ==========================================
+# 7. STRINGS INVÁLIDOS / MALICIOSOS
+# ==========================================
+
+@pytest.mark.parametrize("expr_invalida", ["x** + 2", "2***x", "", ")("])
+def test_compiladores_rechazan_strings_invalidos(expr_invalida):
+    compiladores = [
+        RootFindingService.compilar_funcion,
+        IntegrationService.compilar_funcion,
+        DifferentiationService.compilar_funcion,
+        InterpolationService.compilar_funcion,
+        MonteCarloService.compilar_funcion,
+    ]
+
+    for compilar in compiladores:
+        with pytest.raises(ValueError):
+            compilar(expr_invalida)
+
+
+@pytest.mark.parametrize(
+    "expr_maliciosa",
+    [
+        "__import__('os').system('echo HACK')",
+        "lambda x: x",
+        "open('archivo.txt','w')",
+    ],
+)
+def test_compiladores_rechazan_expresiones_maliciosas(expr_maliciosa):
+    compiladores = [
+        RootFindingService.compilar_funcion,
+        IntegrationService.compilar_funcion,
+        DifferentiationService.compilar_funcion,
+        InterpolationService.compilar_funcion,
+        MonteCarloService.compilar_funcion,
+    ]
+
+    for compilar in compiladores:
+        with pytest.raises(ValueError):
+            compilar(expr_maliciosa)
+
+
+# ==========================================
+# 8. DIVERGENCIA Y LÍMITE DE ITERACIONES
+# ==========================================
+
+def test_punto_fijo_divergencia_hacia_infinito():
+    g = RootFindingService.compilar_funcion("exp(x)")
+    res = RootFindingService.punto_fijo(g, x0=100.0, tol=1e-8, max_iter=30, precision=8)
+
+    assert res["convergencia"] is False
+    assert res["raiz"] is None
+    assert "diverge" in res["error_msg"].lower() or "infinito" in res["error_msg"].lower()
+
+
+def test_newton_raphson_derivada_cero_controlada():
+    f = RootFindingService.compilar_funcion("x**3")
+    res = RootFindingService.newton_raphson(f, x0=0.0, tol=1e-10, max_iter=20, precision=8)
+
+    assert res["convergencia"] is False
+    assert res["raiz"] is None
+    assert "derivada" in res["error_msg"].lower()
+
+
+def test_newton_raphson_respeta_max_iter():
+    f = RootFindingService.compilar_funcion("cos(x) - x")
+    res = RootFindingService.newton_raphson(f, x0=10.0, tol=1e-15, max_iter=1, precision=8)
+
+    assert res["convergencia"] is False
+    assert res["num_iter"] == 1
+    assert "límite de iteraciones" in res["error_msg"].lower()
+
+
+# ==========================================
+# 9. COBERTURA EDO (EULER, HEUN, RK4)
+# ==========================================
+
+@pytest.mark.parametrize(
+    "metodo,tol_abs",
+    [
+        ("euler", 0.20),
+        ("heun", 0.03),
+        ("rk4", 0.001),
+    ],
+)
+def test_edo_metodos_convergen_a_solucion_exacta(metodo, tol_abs):
+    # dy/dx = y, y(0)=1 => y(x)=e^x
+    res = ODEService.ejecutar_metodo(metodo, "y", x0=0.0, y0=1.0, xf=1.0, h=0.1)
+
+    y_final = res["y_plot"][-1]
+    y_exacta_final = res["y_exacta_plot"][-1]
+
+    assert len(res["tabla"]) == len(res["x_plot"])
+    assert y_final == pytest.approx(y_exacta_final, abs=tol_abs)
+
+
+def test_edo_orden_de_precision_esperado():
+    # Para el mismo paso, RK4 debe ser al menos tan preciso como Heun,
+    # y Heun al menos tan preciso como Euler en este problema suave.
+    euler = ODEService.ejecutar_metodo("euler", "y", x0=0.0, y0=1.0, xf=1.0, h=0.1)
+    heun = ODEService.ejecutar_metodo("heun", "y", x0=0.0, y0=1.0, xf=1.0, h=0.1)
+    rk4 = ODEService.ejecutar_metodo("rk4", "y", x0=0.0, y0=1.0, xf=1.0, h=0.1)
+
+    exacta = euler["y_exacta_plot"][-1]
+    err_euler = abs(euler["y_plot"][-1] - exacta)
+    err_heun = abs(heun["y_plot"][-1] - exacta)
+    err_rk4 = abs(rk4["y_plot"][-1] - exacta)
+
+    assert err_heun <= err_euler
+    assert err_rk4 <= err_heun
