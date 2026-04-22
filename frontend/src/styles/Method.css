@@ -210,6 +210,46 @@
   font-size: 12px;
 }
 
+.validation-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.validation-title {
+  font-weight: bold;
+  color: #000080;
+  margin-bottom: 2px;
+}
+
+.validation-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: 'Courier New', monospace;
+  flex-wrap: wrap;
+}
+
+.validation-label {
+  font-weight: bold;
+  color: #000;
+}
+
+.validation-conclusion {
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid #b0b0b0;
+  font-weight: bold;
+}
+
+.validation-ok {
+  color: #006400;
+}
+
+.validation-warn {
+  color: #8b0000;
+}
+
 .big-number {
   font-size: 2em;
   font-weight: bold;

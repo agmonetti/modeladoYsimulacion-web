@@ -95,6 +95,7 @@ class RootFindingService:
         """Método de Punto Fijo - x = g(x)."""
         x = x0
         iteraciones = []
+        verificacion = RootFindingService._verificar_lipschitz(g, x0)
         
         for i in range(max_iter):
             try:
@@ -106,6 +107,7 @@ class RootFindingService:
                     "metodo": "Punto Fijo",
                     "raiz": None,
                     "iteraciones": iteraciones,
+                    "verificacion": verificacion,
                     "convergencia": False,
                     "num_iter": i,
                     "error_msg": f"¡La función diverge! Asegúrate de que |g'(x)| < 1. ({str(e)})"
@@ -126,6 +128,7 @@ class RootFindingService:
                     "metodo": "Punto Fijo",
                     "raiz": round(x_new, precision),
                     "iteraciones": iteraciones,
+                    "verificacion": verificacion,
                     "convergencia": True,
                     "num_iter": i + 1
                 }
@@ -136,6 +139,7 @@ class RootFindingService:
             "metodo": "Punto Fijo",
             "raiz": round(x, precision),
             "iteraciones": iteraciones,
+            "verificacion": verificacion,
             "convergencia": False,
             "num_iter": max_iter,
             "error_msg": "No converge. Revisa si |g'(x)| < 1 en el intervalo."
@@ -145,6 +149,17 @@ class RootFindingService:
     def _derivada_numerica(f: Callable, x: float, dx: float = 1e-6) -> float:
         """Aproxima derivada con diferencias centrales."""
         return (f(x + dx) - f(x - dx)) / (2.0 * dx)
+
+    @staticmethod
+    def _verificar_lipschitz(g: Callable, x0: float, dx: float = 1e-6) -> Dict:
+        """Verifica condición local de contracción en la semilla: |g'(x0)| < 1."""
+        g_prime = float(RootFindingService._derivada_numerica(g, x0, dx))
+        return {
+            "x0": x0,
+            "g_prime": g_prime,
+            "abs_g_prime": abs(g_prime),
+            "cumple": abs(g_prime) < 1,
+        }
     
     @staticmethod
     def newton_raphson(f: Callable, x0: float,
@@ -214,6 +229,7 @@ class RootFindingService:
         """Aceleración de Aitken sobre punto fijo."""
         x = x0
         iteraciones = []
+        verificacion = RootFindingService._verificar_lipschitz(g, x0)
         
         for i in range(max_iter):
             try:
@@ -233,6 +249,7 @@ class RootFindingService:
                     "metodo": "Aitken",
                     "raiz": None,
                     "iteraciones": iteraciones,
+                    "verificacion": verificacion,
                     "convergencia": False,
                     "num_iter": i,
                     "error_msg": f"¡Divergencia detectada! {str(e)}"
@@ -255,6 +272,7 @@ class RootFindingService:
                     "metodo": "Aitken",
                     "raiz": round(x_acelerado, precision),
                     "iteraciones": iteraciones,
+                    "verificacion": verificacion,
                     "convergencia": True,
                     "num_iter": i + 1
                 }
@@ -265,6 +283,7 @@ class RootFindingService:
             "metodo": "Aitken",
             "raiz": round(x, precision),
             "iteraciones": iteraciones,
+            "verificacion": verificacion,
             "convergencia": False,
             "num_iter": max_iter,
             "error_msg": "No converge."

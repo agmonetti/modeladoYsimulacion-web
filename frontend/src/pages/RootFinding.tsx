@@ -10,6 +10,7 @@ export default function RootFinding() {
   const [method, setMethod] = useState('biseccion')
   const [input, setInput] = useState({
     func_str: 'exp(x) - x**2 + 3*x - 2',
+    f_str: 'exp(x) - x**2 + 3*x - 2',
     g_str: 'x - (exp(x) - x**2 + 3*x - 2) / (exp(x) - 2*x + 3)', 
     a: '0',
     b: '1',
@@ -70,6 +71,7 @@ export default function RootFinding() {
       let response
       const basePayload = {
         func_str: input.func_str,
+        f_str: input.f_str,
         g_str: input.g_str,
         a: input.a ? parseFloat(input.a) : undefined,
         b: input.b ? parseFloat(input.b) : undefined,
@@ -113,6 +115,59 @@ export default function RootFinding() {
     return new Function('x', `return ${jsFuncStr}`);
   }
 
+  const formatValidationNumber = (value: number) => {
+    const absolute = Math.abs(value)
+    if (absolute !== 0 && (absolute < 1e-4 || absolute >= 1e6)) {
+      return value.toExponential(4)
+    }
+    return value.toFixed(3)
+  }
+
+  const evaluarBolzano = () => {
+    if (method !== 'biseccion' && method !== 'punto-fijo' && method !== 'aitken') return null
+    try {
+      const aNum = parseFloat(input.a)
+      const bNum = parseFloat(input.b)
+      if (Number.isNaN(aNum) || Number.isNaN(bNum)) return null
+
+      const f = createJsFunc(method === 'biseccion' ? input.func_str : input.f_str)
+      const fa = Number(f(aNum))
+      const fb = Number(f(bNum))
+      if (!Number.isFinite(fa) || !Number.isFinite(fb)) return null
+
+      const producto = fa * fb
+      return {
+        fa,
+        fb,
+        producto,
+        cumple: producto < 0
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const evaluarLipschitz = () => {
+    if (method !== 'punto-fijo' && method !== 'aitken') return null
+    try {
+      const x0Num = parseFloat(input.x0)
+      if (Number.isNaN(x0Num)) return null
+
+      const g = createJsFunc(input.g_str)
+      const h = 1e-6
+      const gDerivada = (Number(g(x0Num + h)) - Number(g(x0Num - h))) / (2 * h)
+      if (!Number.isFinite(gDerivada)) return null
+
+      return {
+        x0: x0Num,
+        gDerivada,
+        cumple: Math.abs(gDerivada) < 1
+      }
+    } catch {
+      return null
+    }
+  }
+
   const generateFunctionPlot = () => {
     try {
       let a = parseFloat(input.a) || -5;
@@ -151,12 +206,19 @@ export default function RootFinding() {
     biseccion: {
       nombre: 'Metodo de Biseccion',
       formula_latex: 'x_n = \\frac{a + b}{2}',
-      parametros: ['f(x): Funcion continua', 'a, b: Intervalo', 'tolerancia', 'precision']
+      parametros: ['f(x): Funcion continua', 'a, b: Intervalo', 'tolerancia', 'precision'],
+      condiciones: [
+        'Bolzano: si f es continua en [a,b] y f(a) * f(b) < 0, entonces existe al menos una raiz en (a,b).'
+      ]
     },
     'punto-fijo': {
       nombre: 'Metodo de Punto Fijo',
       formula_latex: 'x_{n+1} = g(x_n)',
-      parametros: ['g(x): Funcion despejada', 'x0: Inicial', 'tolerancia']
+      parametros: ['g(x): Funcion despejada', 'f(x): Funcion original', 'a, b: Intervalo', 'x0: Inicial', 'tolerancia'],
+      condiciones: [
+        'Convergencia local (Lipschitz): |g\'(x0)| < 1.',
+        'Ademas, se verifica Bolzano sobre f(x) en [a,b] para garantizar existencia de raiz.'
+      ]
     },
     'newton-raphson': {
       nombre: 'Metodo de Newton-Raphson',
@@ -166,11 +228,24 @@ export default function RootFinding() {
     aitken: {
       nombre: 'Aceleracion de Aitken',
       formula_latex: 'x^*_n = x_0 - \\frac{(x_1 - x_0)^2}{x_2 - 2x_1 + x_0}',
-      parametros: ['g(x): Funcion despejada', 'x0: Inicial', 'tolerancia']
+      parametros: ['g(x): Funcion despejada', 'f(x): Funcion original', 'a, b: Intervalo', 'x0: Inicial', 'tolerancia'],
+      condiciones: [
+        'Aitken acelera una iteracion de Punto Fijo; para convergencia se verifica la misma condicion base: |g\'(x0)| < 1.',
+        'Ademas, se verifica Bolzano sobre f(x) en [a,b] para garantizar existencia de raiz.'
+      ]
     }
   }
 
   const theory = theories[method]
+  const bolzanoCheck = evaluarBolzano()
+  const lipschitzCheck =
+    result?.verificacion && (method === 'punto-fijo' || method === 'aitken')
+      ? {
+          x0: Number(result.verificacion.x0),
+          gDerivada: Number(result.verificacion.g_prime),
+          cumple: Boolean(result.verificacion.cumple)
+        }
+      : evaluarLipschitz()
 
   return (
     <div className="method-page">
@@ -181,6 +256,12 @@ export default function RootFinding() {
         <FormulaDisplay formula={theory.formula_latex} title="Formula:" />
         <p><strong>Parametros requeridos:</strong></p>
         <ul>{theory.parametros.map((p: string, i: number) => <li key={i}>{p}</li>)}</ul>
+        {theory.condiciones && theory.condiciones.length > 0 && (
+          <>
+            <p><strong>Condiciones teóricas:</strong></p>
+            <ul>{theory.condiciones.map((c: string, i: number) => <li key={i}>{c}</li>)}</ul>
+          </>
+        )}
       </div>
 
       <div className="method-container">
@@ -218,6 +299,24 @@ export default function RootFinding() {
               </div>
             )}
 
+            {(method === 'punto-fijo' || method === 'aitken') && (
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label>f(x):</label>
+                    <button type="button" onClick={() => setActiveKeyboard(activeKeyboard === 'f' ? null : 'f')} className="btn-keyboard-toggle" style={{fontSize: '11px', padding: '2px 8px', cursor:'pointer', borderRadius:'4px', border:'1px solid #ccc'}}>
+                        {activeKeyboard === 'f' ? '✖ Cerrar' : '⌨ Teclado'}
+                    </button>
+                </div>
+                <input type="text" value={input.f_str} onChange={(e) => setInput({...input, f_str: e.target.value})} />
+                {input.f_str && (
+                  <div style={{ marginTop: '5px', padding: '8px', backgroundColor: '#f1f8ff', border: '1px dashed #b6d4fe', borderRadius: '4px', display: 'flex', justifyContent: 'center', minHeight: '40px', alignItems: 'center' }}>
+                     <FormulaDisplay formula={`f(x) = ${formatToLatex(input.f_str)}`} />
+                  </div>
+                )}
+                {activeKeyboard === 'f' && <MathKeyboard onInsert={(t) => setInput({...input, f_str: input.f_str + t})} onClear={() => setInput({...input, f_str: ''})} />}
+              </div>
+            )}
+
             {(method === 'biseccion' || method === 'newton-raphson') && (
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -243,6 +342,14 @@ export default function RootFinding() {
                 <div className="form-group"><label>a:</label><input type="number" step="any" value={input.a} onChange={(e) => setInput({...input, a: e.target.value})} /></div>
                 <div className="form-group"><label>b:</label><input type="number" step="any" value={input.b} onChange={(e) => setInput({...input, b: e.target.value})} /></div>
               </div>
+            ) : (method === 'punto-fijo' || method === 'aitken') ? (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="form-group"><label>a:</label><input type="number" step="any" value={input.a} onChange={(e) => setInput({...input, a: e.target.value})} /></div>
+                  <div className="form-group"><label>b:</label><input type="number" step="any" value={input.b} onChange={(e) => setInput({...input, b: e.target.value})} /></div>
+                </div>
+                <div className="form-group"><label>x0 (Valor Inicial):</label><input type="number" step="any" value={input.x0} onChange={(e) => setInput({...input, x0: e.target.value})} /></div>
+              </>
             ) : (
               <div className="form-group"><label>x0 (Valor Inicial):</label><input type="number" step="any" value={input.x0} onChange={(e) => setInput({...input, x0: e.target.value})} /></div>
             )}
@@ -261,6 +368,27 @@ export default function RootFinding() {
         <div className="result-section">
           <h2>Resultados</h2>
           {error && <div className="error-box">Error: {error}</div>}
+          {result && !error && (method === 'biseccion' || method === 'punto-fijo' || method === 'aitken') && bolzanoCheck && (
+            <div className="result-box validation-box">
+              <div className="validation-title">Verificación de Bolzano</div>
+              <div className="validation-row"><span className="validation-label">f(a)</span><span>= {formatValidationNumber(bolzanoCheck.fa)}</span></div>
+              <div className="validation-row"><span className="validation-label">f(b)</span><span>= {formatValidationNumber(bolzanoCheck.fb)}</span></div>
+              <div className="validation-row"><span className="validation-label">f(a) * f(b)</span><span>= {formatValidationNumber(bolzanoCheck.producto)}</span></div>
+              <div className={`validation-conclusion ${bolzanoCheck.cumple ? 'validation-ok' : 'validation-warn'}`}>
+                {bolzanoCheck.cumple ? 'Cumple f(a) * f(b) < 0' : 'No cumple f(a) * f(b) < 0'}
+              </div>
+            </div>
+          )}
+          {result && !error && (method === 'punto-fijo' || method === 'aitken') && lipschitzCheck && (
+            <div className="result-box validation-box">
+              <div className="validation-title">Verificación de Lipschitz</div>
+              <div className="validation-row"><span className="validation-label">x0</span><span>= {formatValidationNumber(lipschitzCheck.x0)}</span></div>
+              <div className="validation-row"><span className="validation-label">|g'(x0)|</span><span>= {formatValidationNumber(Math.abs(lipschitzCheck.gDerivada))}</span></div>
+              <div className={`validation-conclusion ${lipschitzCheck.cumple ? 'validation-ok' : 'validation-warn'}`}>
+                {lipschitzCheck.cumple ? 'Cumple |g\'(x0)| < 1' : 'No cumple |g\'(x0)| < 1'}
+              </div>
+            </div>
+          )}
           {result && !error && (
             <>
               <div className="result-box"><strong>Raiz encontrada:</strong> {result.raiz?.toFixed(parseInt(input.precision))}</div>
