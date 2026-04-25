@@ -69,8 +69,7 @@ pytest
 
 - ~agregar calculo de ET de los metodos que lo tienen, pero para calcularlo necesitan el simbolo raro de e/E. ~ agregado, validar cuando tenga foto del parcial!
 
-- agregar calculo de media muestral a la seccion de resultados de montecarlo
-
+- ~agregar calculo de media muestral a la seccion de resultados de montecarlo~
 - ~probar montecarlo a full~
 - ~revisar si se contempla indirecta o directamente la escala (b-a) en el calculo de los errores~
 - ~metodo comparador de integraciones, no muestra si se tuvo que aplciar un rescate matematico~
