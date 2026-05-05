@@ -8,6 +8,7 @@ import Interpolation from './pages/Interpolation'
 import MonteCarlo from './pages/MonteCarlo'
 import Comparator from './pages/Comparator'
 import EDO from './pages/EDO'
+import Dynamic1D from './pages/Dynamic1D'
 import './App.css'
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
 
           <li className="section-title">Ecuaciones Diferenciales</li>
           <li><Link to="/edo" onClick={closeSidebar}>Euler / Heun / RK4</Link></li>
+          <li><Link to="/dynamic-1d" onClick={closeSidebar}>Sistemas Dinamicos 1D</Link></li>
           
           <li className="section-title">Herramientas</li>
           <li><Link to="/comparator" onClick={closeSidebar}>Comparador</Link></li>
@@ -72,6 +74,7 @@ function App() {
           <Route path="/comparator" element={<Comparator />} />
           {/* Agregamos la ruta para EDOs */}
           <Route path="/edo" element={<EDO />} />
+          <Route path="/dynamic-1d" element={<Dynamic1D />} />
         </Routes>
       </main>
     </div>

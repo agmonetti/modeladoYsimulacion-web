@@ -40,6 +40,12 @@ export const edoService = {
   resolver: (data: any) => api.post('/ode/resolver', data),
 }
 
+export const dynamic1DService = {
+  solve: (data: any) => api.post('/dynamic-1d/solve', data),
+  equilibria: (data: any) => api.post('/dynamic-1d/equilibria', data),
+  validate: (data: any) => api.post('/dynamic-1d/validate', data),
+}
+
 export const monteCarloService = {
   hitOrMiss: (data: any) => api.post('/monte-carlo/hit-or-miss-1d', data),
   valorPromedio1d: (data: any) => api.post('/monte-carlo/valor-promedio-1d', data),

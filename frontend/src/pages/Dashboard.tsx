@@ -48,6 +48,12 @@ export default function Dashboard() {
           <small>Resuelve EDOs con condiciones iniciales</small>
         </div>
 
+        <div className="method-card" onClick={() => navigate('/dynamic-1d')}>
+          <h3>Sistemas Dinamicos 1D</h3>
+          <p>Modelos autonomos con diagramas de fase</p>
+          <small>Equilibrios, estabilidad y evolucion temporal</small>
+        </div>
+
         <div className="method-card" onClick={() => navigate('/comparator')}>
           <h3>Comparador</h3>
           <p>Analisis comparativo</p>
