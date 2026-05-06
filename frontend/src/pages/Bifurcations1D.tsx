@@ -179,7 +179,13 @@ export default function Bifurcations1D() {
   const [bifResult, setBifResult] = useState<BifurcationResponse | null>(null)
   const [bifError, setBifError] = useState('')
   const [bifLoading, setBifLoading] = useState(false)
+  const [livePhase, setLivePhase] = useState<{ param: number; phase: PhaseResponse; equilibria: Equilibrium[] } | null>(null)
+  const [livePhaseLoading, setLivePhaseLoading] = useState(false)
+  const [livePhaseError, setLivePhaseError] = useState('')
   const playRef = useRef<number | null>(null)
+  const livePhaseRef = useRef<number | null>(null)
+  const livePhaseTimerRef = useRef<number | null>(null)
+  const lastLivePhaseAtRef = useRef(0)
 
   const formatNumber = (value: number | null | undefined, digits = 6) => {
     if (value === null || value === undefined || Number.isNaN(value)) return 'n/a'
@@ -487,6 +493,77 @@ export default function Bifurcations1D() {
     }
   }, [advancedSummary, bifResult, liveParam])
 
+  const fetchLivePhase = async (paramValue: number) => {
+    const xMinVal = parseMathExpr(bifXMin)
+    const xMaxVal = parseMathExpr(bifXMax)
+    if (!Number.isFinite(xMinVal) || !Number.isFinite(xMaxVal)) return
+    try {
+      setLivePhaseError('')
+      setLivePhaseLoading(true)
+      const payload = {
+        model: 'custom',
+        func_str: bifFuncStr,
+        params: { [bifParam.trim()]: paramValue },
+        control_enabled: false,
+        x_min: xMinVal,
+        x_max: xMaxVal,
+        n_phase: 400,
+        n_time: 200,
+        initial_conditions: [0.5]
+      }
+      const res = await dynamic1DService.equilibria(payload)
+      setLivePhase({
+        param: paramValue,
+        phase: res.data.phase,
+        equilibria: res.data.equilibria
+      })
+    } catch (err: any) {
+      setLivePhaseError(err.message || err.response?.data?.detail || 'Error al actualizar fase en vivo')
+    } finally {
+      setLivePhaseLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!showAdvanced || !bifResult) return
+
+    const clearTimers = () => {
+      if (livePhaseRef.current) {
+        window.clearTimeout(livePhaseRef.current)
+        livePhaseRef.current = null
+      }
+      if (livePhaseTimerRef.current) {
+        window.clearTimeout(livePhaseTimerRef.current)
+        livePhaseTimerRef.current = null
+      }
+    }
+
+    clearTimers()
+
+    if (!isPlaying) {
+      livePhaseRef.current = window.setTimeout(() => {
+        fetchLivePhase(liveParam)
+      }, 120)
+      return clearTimers
+    }
+
+    const now = Date.now()
+    const throttleMs = 200
+    const elapsed = now - lastLivePhaseAtRef.current
+    if (elapsed >= throttleMs) {
+      lastLivePhaseAtRef.current = now
+      fetchLivePhase(liveParam)
+      return clearTimers
+    }
+
+    livePhaseTimerRef.current = window.setTimeout(() => {
+      lastLivePhaseAtRef.current = Date.now()
+      fetchLivePhase(liveParam)
+    }, throttleMs - elapsed)
+
+    return clearTimers
+  }, [showAdvanced, bifResult, isPlaying, bifFuncStr, bifParam, bifXMin, bifXMax, liveParam])
+
   return (
     <div className="method-page">
       <h1>Bifurcaciones 1D</h1>
@@ -647,6 +724,79 @@ export default function Bifurcations1D() {
                   <div style={{ marginTop: '8px' }}>
                     <FormulaDisplay formula={`f(x) = ${formatToLatex(bifFuncStr || 'f(x)')}`} />
                   </div>
+                  <div style={{ marginTop: '10px' }}>
+                    {livePhase ? (
+                      <PlotlyGraph
+                        data={buildPhasePlot(livePhase.phase, livePhase.equilibria).data}
+                        title={`Fase en vivo (${bifParam} = ${formatNumber(livePhase.param, 4)})`}
+                        layout={{ xaxis: { title: 'x' }, yaxis: { title: 'f(x)' }, height: 400 }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: '13px' }}>
+                        {livePhaseLoading ? 'Actualizando fase en vivo...' : 'No hay datos de fase disponibles.'}
+                      </div>
+                    )}
+                    {livePhaseError && (
+                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#b00020' }}>
+                        {livePhaseError}
+                      </div>
+                    )}
+                  </div>
+                  <div className="result-box" style={{ marginTop: '12px' }}>
+                    <div className="validation-title">Analisis avanzado</div>
+                    {!bifResult && (
+                      <div style={{ fontSize: '13px' }}>
+                        Ejecuta una bifurcacion para ver el resumen numerico.
+                      </div>
+                    )}
+                    {bifResult && advancedSummary && (
+                      <div style={{ display: 'grid', gap: '10px' }}>
+                        <div className="result-box">
+                          <div className="validation-title">Condicion de existencia (aprox.)</div>
+                          {advancedSummary.existenceStart === null ? (
+                            <div style={{ fontSize: '13px' }}>No hay raices reales en el rango seleccionado.</div>
+                          ) : (
+                            <div style={{ fontSize: '13px' }}>
+                              {bifParam} {'>='} {formatNumber(advancedSummary.existenceStart, 6)}
+                              {advancedSummary.existenceEnd !== null ? (
+                                <> y {bifParam} {'<='} {formatNumber(advancedSummary.existenceEnd, 6)}</>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="result-box">
+                          <div className="validation-title">Puntos de bifurcacion (aprox.)</div>
+                          {advancedSummary.bifPoints.length === 0 ? (
+                            <div style={{ fontSize: '13px' }}>No se detectaron cambios de cantidad de raices.</div>
+                          ) : (
+                            <div style={{ fontSize: '13px' }}>
+                              {advancedSummary.bifPoints.map((bp, idx) => (
+                                <div key={`${bp.at}-${idx}`}>
+                                  {bifParam} ~= {formatNumber(bp.at, 6)} ({bp.fromCount} a {bp.toCount} raices)
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="result-box">
+                          <div className="validation-title">Raices y estabilidad (r actual)</div>
+                          {!liveSnapshot || liveSnapshot.equilibria.length === 0 ? (
+                            <div style={{ fontSize: '13px' }}>No hay raices reales para este valor.</div>
+                          ) : (
+                            <div style={{ fontSize: '13px' }}>
+                              {liveSnapshot.equilibria.map((eq, idx) => (
+                                <div key={`${liveSnapshot.param}-${idx}`}>
+                                  x* = {formatNumber(eq.x, 6)} | f'(x*) = {formatNumber(eq.fprime, 6)} | {eq.stability}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -768,63 +918,6 @@ export default function Bifurcations1D() {
             </div>
           )}
 
-          {showAdvanced && (
-            <div className="result-box" style={{ marginTop: '10px' }}>
-              <div className="validation-title">Analisis avanzado</div>
-              {!bifResult && (
-                <div style={{ fontSize: '13px' }}>
-                  Ejecuta una bifurcacion para ver el resumen numerico.
-                </div>
-              )}
-              {bifResult && advancedSummary && (
-                <div style={{ display: 'grid', gap: '10px' }}>
-                  <div className="result-box">
-                    <div className="validation-title">Condicion de existencia (aprox.)</div>
-                    {advancedSummary.existenceStart === null ? (
-                      <div style={{ fontSize: '13px' }}>No hay raices reales en el rango seleccionado.</div>
-                    ) : (
-                      <div style={{ fontSize: '13px' }}>
-                        {bifParam} {'>='} {formatNumber(advancedSummary.existenceStart, 6)}
-                        {advancedSummary.existenceEnd !== null ? (
-                          <> y {bifParam} {'<='} {formatNumber(advancedSummary.existenceEnd, 6)}</>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="result-box">
-                    <div className="validation-title">Puntos de bifurcacion (aprox.)</div>
-                    {advancedSummary.bifPoints.length === 0 ? (
-                      <div style={{ fontSize: '13px' }}>No se detectaron cambios de cantidad de raices.</div>
-                    ) : (
-                      <div style={{ fontSize: '13px' }}>
-                        {advancedSummary.bifPoints.map((bp, idx) => (
-                          <div key={`${bp.at}-${idx}`}>
-                            {bifParam} ~= {formatNumber(bp.at, 6)} ({bp.fromCount} a {bp.toCount} raices)
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="result-box">
-                    <div className="validation-title">Raices y estabilidad (r actual)</div>
-                    {!liveSnapshot || liveSnapshot.equilibria.length === 0 ? (
-                      <div style={{ fontSize: '13px' }}>No hay raices reales para este valor.</div>
-                    ) : (
-                      <div style={{ fontSize: '13px' }}>
-                        {liveSnapshot.equilibria.map((eq, idx) => (
-                          <div key={`${liveSnapshot.param}-${idx}`}>
-                            x* = {formatNumber(eq.x, 6)} | f'(x*) = {formatNumber(eq.fprime, 6)} | {eq.stability}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {bifResult && bifResult.phase_slices && bifResult.phase_slices.length > 0 && (
             <div>
