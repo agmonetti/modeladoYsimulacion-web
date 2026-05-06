@@ -100,6 +100,25 @@ const parseNumberList = (raw: string): number[] => {
   return values
 }
 
+const formatToLatex = (str: string) => {
+  if (!str) return ''
+  return str.toLowerCase()
+    .replace(/\*\*/g, '^')
+    .replace(/\*/g, ' \\cdot ')
+    .replace(/exp\(([^)]+)\)/g, 'e^{$1}')
+    .replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')
+    .replace(/\bpi\b/g, '\\pi')
+    .replace(/\be\b/g, 'e')
+    .replace(/\bmu\b/g, '\\mu')
+    .replace(/\bta\b/g, 'T_a')
+    .replace(/sen\(/g, '\\sin(')
+    .replace(/sin\(/g, '\\sin(')
+    .replace(/cos\(/g, '\\cos(')
+    .replace(/tan\(/g, '\\tan(')
+    .replace(/log\(/g, '\\ln(')
+    .replace(/ln\(/g, '\\ln(')
+}
+
 export default function Dynamic1D() {
   const [model, setModel] = useState('verhulst')
   const [funcStr, setFuncStr] = useState('')
@@ -492,7 +511,7 @@ export default function Dynamic1D() {
               />
             )}
             <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f1f8ff', border: '1px dashed #b6d4fe', borderRadius: '4px' }}>
-              <FormulaDisplay formula={`x' = ${funcStr || 'f(x)'}`} />
+              <FormulaDisplay formula={`x' = ${formatToLatex(funcStr || 'f(x)')}`} />
             </div>
           </div>
 
@@ -633,7 +652,7 @@ export default function Dynamic1D() {
           {resultado && (
             <div className="result-box">
               <div className="validation-title">Equacion usada:</div>
-              <FormulaDisplay formula={`x' = ${resultado.equation}`} />
+              <FormulaDisplay formula={`x' = ${formatToLatex(resultado.equation || 'f(x)')}`} />
             </div>
           )}
 

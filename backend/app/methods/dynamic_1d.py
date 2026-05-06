@@ -11,6 +11,8 @@ from sympy.parsing.sympy_parser import (
     implicit_multiplication_application,
 )
 
+from app.core.utils import numerical_derivative
+
 
 class Dynamic1DService:
     @staticmethod
@@ -50,6 +52,112 @@ class Dynamic1DService:
             raise ValueError(f"Faltan parametros: {missing}")
 
         return expr
+
+    @staticmethod
+    def _expr_to_str(expr: sp.Expr) -> str:
+        return str(expr).replace('**', '^')
+
+    @staticmethod
+    def _format_inequality_result(result: Any) -> str | None:
+        if result is None:
+            return None
+        if result is True:
+            return 'siempre'
+        if result is False:
+            return 'nunca'
+        try:
+            return Dynamic1DService._expr_to_str(result)
+        except Exception:
+            return str(result)
+
+    @staticmethod
+    def _extract_real_conditions(expr: sp.Expr) -> List[sp.Relational]:
+        conditions: List[sp.Relational] = []
+        for pow_expr in expr.atoms(sp.Pow):
+            exp = pow_expr.exp
+            if exp.is_Rational and exp.q % 2 == 0:
+                conditions.append(sp.Ge(sp.simplify(pow_expr.base), 0))
+        return conditions
+
+    @staticmethod
+    def _exact_bifurcation_analysis(expr: sp.Expr, bif_param: str) -> Dict[str, Any]:
+        x = sp.Symbol('x')
+        p = sp.Symbol(bif_param)
+
+        expr_simplified = sp.simplify(expr)
+        deriv_expr = sp.diff(expr_simplified, x)
+
+        try:
+            roots = sp.solve(sp.Eq(expr_simplified, 0), x)
+        except Exception:
+            roots = []
+
+        unique_roots: List[sp.Expr] = []
+        for root in roots:
+            if root not in unique_roots:
+                unique_roots.append(root)
+
+        root_entries: List[Dict[str, str]] = []
+        stability_entries: List[Dict[str, str]] = []
+        existence_conditions: List[sp.Expr] = []
+        has_always_real = False
+
+        for root in unique_roots:
+            root_str = Dynamic1DService._expr_to_str(root)
+            deriv_at_root = sp.simplify(deriv_expr.subs(x, root))
+
+            conditions = Dynamic1DService._extract_real_conditions(root)
+            if not conditions:
+                root_exists = 'siempre'
+                if root.is_real is True:
+                    has_always_real = True
+                else:
+                    if not root.has(sp.I):
+                        has_always_real = True
+            else:
+                if len(conditions) == 1:
+                    existence_conditions.append(conditions[0])
+                    root_exists = Dynamic1DService._expr_to_str(conditions[0])
+                else:
+                    merged = sp.And(*conditions)
+                    existence_conditions.append(merged)
+                    root_exists = Dynamic1DService._expr_to_str(merged)
+
+            root_entries.append({
+                'root': root_str,
+                'existence': root_exists,
+            })
+
+            stable_cond = None
+            unstable_cond = None
+            try:
+                stable_cond = sp.solve_univariate_inequality(deriv_at_root < 0, p, relational=True)
+            except Exception:
+                stable_cond = None
+            try:
+                unstable_cond = sp.solve_univariate_inequality(deriv_at_root > 0, p, relational=True)
+            except Exception:
+                unstable_cond = None
+
+            stability_entries.append({
+                'root': root_str,
+                'derivative': Dynamic1DService._expr_to_str(deriv_at_root),
+                'stable_when': Dynamic1DService._format_inequality_result(stable_cond),
+                'unstable_when': Dynamic1DService._format_inequality_result(unstable_cond),
+            })
+
+        existence_expr = None
+        if has_always_real:
+            existence_expr = 'siempre'
+        elif existence_conditions:
+            existence_expr = Dynamic1DService._expr_to_str(sp.simplify(sp.Or(*existence_conditions)))
+
+        return {
+            'existence': existence_expr,
+            'roots': root_entries,
+            'stability': stability_entries,
+            'derivative': Dynamic1DService._expr_to_str(deriv_expr),
+        }
 
     @staticmethod
     def _build_expr(model: str, func_str: str, params: Dict[str, float], control_enabled: bool) -> Tuple[str, Dict[str, float]]:
@@ -95,10 +203,6 @@ class Dynamic1DService:
         return y
 
     @staticmethod
-    def _numeric_derivative(f: Callable, x: float, h: float = 1e-5) -> float:
-        return (float(f(x + h)) - float(f(x - h))) / (2.0 * h)
-
-    @staticmethod
     def _unique_sorted(values: List[float], tol: float = 1e-5) -> List[float]:
         if not values:
             return []
@@ -139,7 +243,7 @@ class Dynamic1DService:
         df_tol = 1e-6
         for root in roots:
             try:
-                df = Dynamic1DService._numeric_derivative(f, root)
+                df = float(numerical_derivative(f, root, order=1, h=1e-5))
             except Exception:
                 df = float('nan')
 
@@ -275,6 +379,8 @@ class Dynamic1DService:
         params = payload.get('params', {}) or {}
         control_enabled = bool(payload.get('control_enabled', False))
 
+        model_hint = payload.get('bif_model', model)
+
         bif_param = payload.get('bif_param', 'r')
         x_min = float(payload.get('x_min', -1))
         x_max = float(payload.get('x_max', 3))
@@ -288,6 +394,15 @@ class Dynamic1DService:
 
         expr_str, _ = Dynamic1DService._build_expr(model, func_str, params, control_enabled)
         expr_template = Dynamic1DService._parse_expression(expr_str, params, ['x', bif_param])
+        if params:
+            expr_template = expr_template.subs(params)
+
+        exact_analysis = None
+        try:
+            exact_analysis = Dynamic1DService._exact_bifurcation_analysis(expr_template, bif_param)
+            exact_analysis['model_hint'] = model_hint
+        except Exception:
+            exact_analysis = None
 
         param_values = np.linspace(bif_min, bif_max, bif_steps)
         equilibria_rows: List[Dict[str, Any]] = []
@@ -330,4 +445,5 @@ class Dynamic1DService:
                 'equilibria': equilibria_rows,
             },
             'phase_slices': phase_slices,
+            'exact_analysis': exact_analysis,
         }

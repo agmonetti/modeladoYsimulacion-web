@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import PlotlyGraph from '../components/PlotlyGraph'
 import FormulaDisplay from '../components/FormulaDisplay'
 import MathKeyboard from '../components/MathKeyboard'
@@ -35,6 +35,13 @@ type BifurcationResponse = {
     equilibria: BifurcationEquilibrium[]
   }
   phase_slices: { param: number; equilibria: Equilibrium[]; phase: PhaseResponse }[]
+  exact_analysis?: {
+    existence?: string | null
+    roots?: { root: string; existence?: string | null }[]
+    stability?: { root: string; derivative: string; stable_when?: string | null; unstable_when?: string | null }[]
+    derivative?: string
+    model_hint?: string
+  } | null
 }
 
 const bifurcationDefaults: Record<string, {
@@ -132,12 +139,36 @@ const parseNumberList = (raw: string): number[] => {
   return values
 }
 
+const formatToLatex = (str: string) => {
+  if (!str) return ''
+  return str.toLowerCase()
+    .replace(/<=/g, '\\le')
+    .replace(/>=/g, '\\ge')
+    .replace(/\*\*/g, '^')
+    .replace(/\*/g, ' \\cdot ')
+    .replace(/exp\(([^)]+)\)/g, 'e^{$1}')
+    .replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')
+    .replace(/\bpi\b/g, '\\pi')
+    .replace(/\be\b/g, 'e')
+    .replace(/\bmu\b/g, '\\mu')
+    .replace(/\bta\b/g, 'T_a')
+    .replace(/sen\(/g, '\\sin(')
+    .replace(/sin\(/g, '\\sin(')
+    .replace(/cos\(/g, '\\cos(')
+    .replace(/tan\(/g, '\\tan(')
+    .replace(/log\(/g, '\\ln(')
+    .replace(/ln\(/g, '\\ln(')
+}
+
 export default function Bifurcations1D() {
   const [bifModel, setBifModel] = useState('saddle_node_pos')
   const [bifFuncStr, setBifFuncStr] = useState('r + x^2')
   const [bifXMin, setBifXMin] = useState('-2')
   const [bifXMax, setBifXMax] = useState('2')
   const [showBifKeyboard, setShowBifKeyboard] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [liveParam, setLiveParam] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   const [bifParam, setBifParam] = useState('r')
   const [bifMin, setBifMin] = useState('-2')
@@ -148,6 +179,12 @@ export default function Bifurcations1D() {
   const [bifResult, setBifResult] = useState<BifurcationResponse | null>(null)
   const [bifError, setBifError] = useState('')
   const [bifLoading, setBifLoading] = useState(false)
+  const playRef = useRef<number | null>(null)
+
+  const formatNumber = (value: number | null | undefined, digits = 6) => {
+    if (value === null || value === undefined || Number.isNaN(value)) return 'n/a'
+    return value.toFixed(digits)
+  }
 
   const applyBifurcationDefaults = (selected: string) => {
     const defaults = bifurcationDefaults[selected]
@@ -160,7 +197,55 @@ export default function Bifurcations1D() {
     setPhaseParams(defaults.phase)
     setBifXMin(String(defaults.x_min))
     setBifXMax(String(defaults.x_max))
+    setLiveParam(defaults.min)
   }
+
+  const getParamRange = () => {
+    const min = parseMathExpr(bifMin)
+    const max = parseMathExpr(bifMax)
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return { min: 0, max: 1 }
+    }
+    return { min, max }
+  }
+
+  const getParamStep = () => {
+    const { min, max } = getParamRange()
+    const steps = parseInt(bifSteps, 10)
+    if (!Number.isFinite(steps) || steps < 2) return Math.max(0.01, (max - min) / 100)
+    return (max - min) / (steps - 1)
+  }
+
+  useEffect(() => {
+    const { min, max } = getParamRange()
+    setLiveParam((prev) => Math.min(max, Math.max(min, prev)))
+  }, [bifMin, bifMax])
+
+  useEffect(() => {
+    if (!isPlaying) {
+      if (playRef.current) {
+        window.clearInterval(playRef.current)
+        playRef.current = null
+      }
+      return
+    }
+    const { min, max } = getParamRange()
+    const step = getParamStep()
+    if (!Number.isFinite(step) || step <= 0) return
+    playRef.current = window.setInterval(() => {
+      setLiveParam((prev) => {
+        const next = prev + step
+        if (next > max) return min
+        return next
+      })
+    }, 200)
+    return () => {
+      if (playRef.current) {
+        window.clearInterval(playRef.current)
+        playRef.current = null
+      }
+    }
+  }, [isPlaying, bifMin, bifMax, bifSteps])
 
   const buildBifurcationPayload = () => {
     if (!bifFuncStr || bifFuncStr.trim() === '') {
@@ -195,6 +280,7 @@ export default function Bifurcations1D() {
       x_max: xMaxVal,
       n_phase: 400,
       bif_param: bifParam.trim(),
+      bif_model: bifModel,
       bif_min: bifMinVal,
       bif_max: bifMaxVal,
       bif_steps: bifStepsVal,
@@ -341,6 +427,66 @@ export default function Bifurcations1D() {
     }
   }, [bifResult])
 
+  const advancedSummary = useMemo(() => {
+    if (!bifResult) return null
+
+    const paramKey = (value: number) => value.toFixed(12)
+    const byParam = new Map<string, BifurcationEquilibrium[]>()
+    for (const eq of bifResult.bifurcation.equilibria || []) {
+      const key = paramKey(eq.param)
+      const list = byParam.get(key) || []
+      list.push(eq)
+      byParam.set(key, list)
+    }
+
+    const params = [...(bifResult.bifurcation.param_values || [])].sort((a, b) => a - b)
+    const counts = params.map((p) => ({
+      param: p,
+      count: (byParam.get(paramKey(p)) || []).length
+    }))
+
+    const firstWithRoots = counts.find((c) => c.count > 0)
+    const lastWithRoots = [...counts].reverse().find((c) => c.count > 0)
+
+    const bifPoints: { at: number; fromCount: number; toCount: number }[] = []
+    for (let i = 1; i < counts.length; i += 1) {
+      const prev = counts[i - 1]
+      const curr = counts[i]
+      if (prev.count !== curr.count) {
+        bifPoints.push({ at: curr.param, fromCount: prev.count, toCount: curr.count })
+      }
+    }
+
+    return {
+      params,
+      byParam,
+      bifPoints,
+      existenceStart: firstWithRoots?.param ?? null,
+      existenceEnd: lastWithRoots?.param ?? null
+    }
+  }, [bifResult])
+
+  const liveSnapshot = useMemo(() => {
+    if (!bifResult || !advancedSummary) return null
+    const params = advancedSummary.params
+    if (params.length === 0) return null
+    const target = liveParam
+    let closest = params[0]
+    let bestDist = Math.abs(params[0] - target)
+    for (let i = 1; i < params.length; i += 1) {
+      const dist = Math.abs(params[i] - target)
+      if (dist < bestDist) {
+        bestDist = dist
+        closest = params[i]
+      }
+    }
+    const list = advancedSummary.byParam.get(closest.toFixed(12)) || []
+    return {
+      param: closest,
+      equilibria: list
+    }
+  }, [advancedSummary, bifResult, liveParam])
+
   return (
     <div className="method-page">
       <h1>Bifurcaciones 1D</h1>
@@ -407,7 +553,7 @@ export default function Bifurcations1D() {
               />
             )}
             <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f1f8ff', border: '1px dashed #b6d4fe', borderRadius: '4px' }}>
-              <FormulaDisplay formula={`x' = ${bifFuncStr || 'f(x)'}`} />
+              <FormulaDisplay formula={`x' = ${formatToLatex(bifFuncStr || 'f(x)')}`} />
             </div>
           </div>
 
@@ -458,6 +604,53 @@ export default function Bifurcations1D() {
           <button type="button" className="btn-primary" onClick={handleBifurcation} disabled={bifLoading}>
             {bifLoading ? 'Calculando...' : 'Calcular bifurcacion'}
           </button>
+
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ marginTop: '8px', background: showAdvanced ? '#e0e0e0' : undefined, color: showAdvanced ? '#000' : undefined }}
+            onClick={() => setShowAdvanced((prev) => !prev)}
+          >
+            {showAdvanced ? 'Ocultar analisis avanzado' : 'Mostrar analisis avanzado'}
+          </button>
+
+          {showAdvanced && (
+            <div className="result-box" style={{ marginTop: '10px' }}>
+              <div className="validation-title">Barrido en vivo (modo GeoGebra)</div>
+              {!bifResult && (
+                <div style={{ fontSize: '13px' }}>
+                  Ejecuta una bifurcacion para habilitar el barrido en vivo.
+                </div>
+              )}
+              {bifResult && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <strong>{bifParam} = {formatNumber(liveParam, 4)}</strong>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      style={{ padding: '2px 8px' }}
+                      onClick={() => setIsPlaying((prev) => !prev)}
+                    >
+                      {isPlaying ? 'Pausar' : 'Reproducir'}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min={getParamRange().min}
+                    max={getParamRange().max}
+                    step={getParamStep()}
+                    value={liveParam}
+                    onChange={(e) => setLiveParam(parseFloat(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <div style={{ marginTop: '8px' }}>
+                    <FormulaDisplay formula={`f(x) = ${formatToLatex(bifFuncStr || 'f(x)')}`} />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="result-section">
@@ -469,10 +662,98 @@ export default function Bifurcations1D() {
             <div className="result-box" style={{ marginTop: '12px' }}>
               <div className="validation-title">Bifurcacion</div>
               <div style={{ marginBottom: '6px' }}>
-                <FormulaDisplay formula={`x' = ${bifResult.equation}`} />
+                <FormulaDisplay formula={`x' = ${formatToLatex(bifResult.equation || 'f(x)')}`} />
               </div>
               <div style={{ fontSize: '13px' }}>
                 Parametro: <strong>{bifResult.bif_param}</strong>
+              </div>
+            </div>
+          )}
+
+          {bifResult?.exact_analysis && (
+            <div className="result-box" style={{ marginTop: '10px' }}>
+              <div className="validation-title">Resultados del ejercicio</div>
+              <div style={{ fontSize: '13px', display: 'grid', gap: '6px' }}>
+                {bifResult.exact_analysis.roots && bifResult.exact_analysis.roots.length > 0 && (
+                  <div>
+                    <strong>Puntos de equilibrio:</strong>
+                    <div style={{ marginTop: '4px' }}>
+                      {bifResult.exact_analysis.roots.map((item, idx) => (
+                        <div key={`root-${idx}`}>
+                          <span>x* = </span>
+                          <FormulaDisplay inline formula={formatToLatex(item.root)} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {bifResult.exact_analysis.roots && bifResult.exact_analysis.roots.length > 0 && (
+                  <div>
+                    <strong>Condicion de existencia:</strong>
+                    <div style={{ marginTop: '4px' }}>
+                      {bifResult.exact_analysis.roots.map((item, idx) => (
+                        <div key={`exist-${idx}`}>
+                          <span>x* = </span>
+                          <FormulaDisplay inline formula={formatToLatex(item.root)} />
+                          {item.existence ? (
+                            <>
+                              <span> | </span>
+                              {item.existence === 'siempre' ? (
+                                <span>siempre existe</span>
+                              ) : (
+                                <>
+                                  <span>existe si </span>
+                                  <FormulaDisplay inline formula={formatToLatex(item.existence)} />
+                                </>
+                              )}
+                            </>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {bifResult.exact_analysis.stability && bifResult.exact_analysis.stability.length > 0 && (
+                  <div>
+                    <strong>Analisis de estabilidad:</strong>
+                    <div style={{ marginTop: '4px' }}>
+                      {bifResult.exact_analysis.stability.map((item, idx) => (
+                        <div key={`stab-${idx}`}>
+                          <div>
+                            <span>f'(x*) = </span>
+                            <FormulaDisplay inline formula={formatToLatex(item.derivative)} />
+                          </div>
+                          {item.stable_when ? (
+                            <div>
+                              <span>estable si </span>
+                              {item.stable_when === 'siempre' ? (
+                                <span>siempre</span>
+                              ) : item.stable_when === 'nunca' ? (
+                                <span>nunca</span>
+                              ) : (
+                                <FormulaDisplay inline formula={formatToLatex(item.stable_when)} />
+                              )}
+                            </div>
+                          ) : null}
+                          {item.unstable_when ? (
+                            <div>
+                              <span>inestable si </span>
+                              {item.unstable_when === 'siempre' ? (
+                                <span>siempre</span>
+                              ) : item.unstable_when === 'nunca' ? (
+                                <span>nunca</span>
+                              ) : (
+                                <FormulaDisplay inline formula={formatToLatex(item.unstable_when)} />
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -484,6 +765,64 @@ export default function Bifurcations1D() {
                 title="Diagrama de bifurcacion"
                 layout={{ xaxis: { title: bifResult?.bif_param || 'parametro' }, yaxis: { title: 'x*' } }}
               />
+            </div>
+          )}
+
+          {showAdvanced && (
+            <div className="result-box" style={{ marginTop: '10px' }}>
+              <div className="validation-title">Analisis avanzado</div>
+              {!bifResult && (
+                <div style={{ fontSize: '13px' }}>
+                  Ejecuta una bifurcacion para ver el resumen numerico.
+                </div>
+              )}
+              {bifResult && advancedSummary && (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <div className="result-box">
+                    <div className="validation-title">Condicion de existencia (aprox.)</div>
+                    {advancedSummary.existenceStart === null ? (
+                      <div style={{ fontSize: '13px' }}>No hay raices reales en el rango seleccionado.</div>
+                    ) : (
+                      <div style={{ fontSize: '13px' }}>
+                        {bifParam} {'>='} {formatNumber(advancedSummary.existenceStart, 6)}
+                        {advancedSummary.existenceEnd !== null ? (
+                          <> y {bifParam} {'<='} {formatNumber(advancedSummary.existenceEnd, 6)}</>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="result-box">
+                    <div className="validation-title">Puntos de bifurcacion (aprox.)</div>
+                    {advancedSummary.bifPoints.length === 0 ? (
+                      <div style={{ fontSize: '13px' }}>No se detectaron cambios de cantidad de raices.</div>
+                    ) : (
+                      <div style={{ fontSize: '13px' }}>
+                        {advancedSummary.bifPoints.map((bp, idx) => (
+                          <div key={`${bp.at}-${idx}`}>
+                            {bifParam} ~= {formatNumber(bp.at, 6)} ({bp.fromCount} a {bp.toCount} raices)
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="result-box">
+                    <div className="validation-title">Raices y estabilidad (r actual)</div>
+                    {!liveSnapshot || liveSnapshot.equilibria.length === 0 ? (
+                      <div style={{ fontSize: '13px' }}>No hay raices reales para este valor.</div>
+                    ) : (
+                      <div style={{ fontSize: '13px' }}>
+                        {liveSnapshot.equilibria.map((eq, idx) => (
+                          <div key={`${liveSnapshot.param}-${idx}`}>
+                            x* = {formatNumber(eq.x, 6)} | f'(x*) = {formatNumber(eq.fprime, 6)} | {eq.stability}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
