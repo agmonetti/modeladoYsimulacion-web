@@ -54,6 +54,12 @@ export default function Dashboard() {
           <small>Equilibrios, estabilidad y evolucion temporal</small>
         </div>
 
+        <div className="method-card" onClick={() => navigate('/bifurcations-1d')}>
+          <h3>Bifurcaciones 1D</h3>
+          <p>Silla nodo, pitchfork y transcrita</p>
+          <small>Diagrama de bifurcacion y fase</small>
+        </div>
+
         <div className="method-card" onClick={() => navigate('/comparator')}>
           <h3>Comparador</h3>
           <p>Analisis comparativo</p>

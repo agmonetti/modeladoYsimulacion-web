@@ -9,6 +9,7 @@ import MonteCarlo from './pages/MonteCarlo'
 import Comparator from './pages/Comparator'
 import EDO from './pages/EDO'
 import Dynamic1D from './pages/Dynamic1D'
+import Bifurcations1D from './pages/Bifurcations1D'
 import './App.css'
 
 function App() {
@@ -56,7 +57,10 @@ function App() {
 
           <li className="section-title">Ecuaciones Diferenciales</li>
           <li><Link to="/edo" onClick={closeSidebar}>Euler / Heun / RK4</Link></li>
-          <li><Link to="/dynamic-1d" onClick={closeSidebar}>Sistemas Dinamicos 1D</Link></li>
+          
+          <li className="section-title">Sistemas Dinamicos</li>
+          <li><Link to="/dynamic-1d" onClick={closeSidebar}>SD Autonomos 1D</Link></li>
+          <li><Link to="/bifurcations-1d" onClick={closeSidebar}>Bifurcaciones 1D</Link></li>
           
           <li className="section-title">Herramientas</li>
           <li><Link to="/comparator" onClick={closeSidebar}>Comparador</Link></li>
@@ -75,6 +79,7 @@ function App() {
           {/* Agregamos la ruta para EDOs */}
           <Route path="/edo" element={<EDO />} />
           <Route path="/dynamic-1d" element={<Dynamic1D />} />
+          <Route path="/bifurcations-1d" element={<Bifurcations1D />} />
         </Routes>
       </main>
     </div>

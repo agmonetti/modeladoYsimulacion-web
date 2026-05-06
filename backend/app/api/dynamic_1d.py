@@ -23,6 +23,26 @@ class Dynamic1DRequest(BaseModel):
         extra = 'allow'
 
 
+class Dynamic1DBifurcationRequest(BaseModel):
+    model: Optional[str] = 'custom'
+    func_str: Optional[str] = 'x'
+    params: Optional[Dict[str, float]] = None
+    control_enabled: Optional[bool] = False
+    x_min: Optional[float] = -1
+    x_max: Optional[float] = 3
+    n_phase: Optional[int] = 400
+
+    bif_param: Optional[str] = 'r'
+    bif_min: Optional[float] = -1
+    bif_max: Optional[float] = 1
+    bif_steps: Optional[int] = 60
+
+    phase_params: Optional[List[float]] = None
+
+    class Config:
+        extra = 'allow'
+
+
 @router.post("/solve")
 def solve_system(req: Dynamic1DRequest):
     try:
@@ -70,5 +90,14 @@ def equilibria_system(req: Dynamic1DRequest):
             'equilibria': equilibria,
             'phase': phase,
         }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/bifurcation")
+def bifurcation_system(req: Dynamic1DBifurcationRequest):
+    try:
+        payload = req.dict()
+        return Dynamic1DService.bifurcation(payload)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

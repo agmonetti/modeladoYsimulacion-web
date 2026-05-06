@@ -9,6 +9,7 @@ type Equilibrium = {
   x: number
   fprime: number | null
   stability: string
+  stability_reason?: string
 }
 
 type PhaseResponse = {
@@ -65,6 +66,7 @@ const modelDefaults: Record<string, any> = {
     initial_conditions: '40, 30'
   }
 }
+
 
 const paramRanges: Record<string, { min: number; max: number; step: number }> = {
   r: { min: 0, max: 2, step: 0.01 },
@@ -174,6 +176,7 @@ export default function Dynamic1D() {
       n_time: 200
     }
   }
+
 
   const handleSolve = async (silent = false) => {
     if (loading) return
@@ -321,6 +324,7 @@ export default function Dynamic1D() {
     }
   }, [resultado])
 
+
   const timePlot = useMemo(() => {
     if (!resultado) return null
     const time = resultado.time
@@ -336,6 +340,7 @@ export default function Dynamic1D() {
       }))
     }
   }, [resultado])
+
 
   const renderParamControl = (key: string, label: string, disabled = false) => {
     const range = paramRanges[key]
@@ -663,6 +668,7 @@ export default function Dynamic1D() {
               layout={{ xaxis: { title: 't' }, yaxis: { title: 'x(t)' } }}
             />
           )}
+
         </div>
       </div>
     </div>
