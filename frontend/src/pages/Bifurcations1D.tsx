@@ -160,6 +160,24 @@ const formatToLatex = (str: string) => {
     .replace(/ln\(/g, '\\ln(')
 }
 
+const simplifyCondition = (raw?: string | null) => {
+  if (!raw) return ''
+  const normalized = raw
+    .replace(/true/gi, 'siempre')
+    .replace(/false/gi, 'nunca')
+    .replace(/-oo/gi, '-inf')
+    .replace(/\boo\b/gi, 'inf')
+
+  const compact = normalized
+    .replace(/\(-inf < ([a-zA-Z_][\w]*)\)\s*&\s*\(\1 < inf\)/g, 'siempre')
+    .replace(/\(-inf < ([a-zA-Z_][\w]*)\)\s*&\s*\(\1 <= 0\)/g, '$1 <= 0')
+    .replace(/\(-inf < ([a-zA-Z_][\w]*)\)\s*&\s*\(\1 < 0\)/g, '$1 < 0')
+    .replace(/\(0 <= ([a-zA-Z_][\w]*)\)\s*&\s*\(\1 < inf\)/g, '$1 >= 0')
+    .replace(/\(0 < ([a-zA-Z_][\w]*)\)\s*&\s*\(\1 < inf\)/g, '$1 > 0')
+
+  return compact
+}
+
 export default function Bifurcations1D() {
   const [bifModel, setBifModel] = useState('saddle_node_pos')
   const [bifFuncStr, setBifFuncStr] = useState('r + x^2')
@@ -871,34 +889,52 @@ export default function Bifurcations1D() {
                     <div style={{ marginTop: '4px' }}>
                       {bifResult.exact_analysis.stability.map((item, idx) => (
                         <div key={`stab-${idx}`}>
+                          {(() => {
+                            const stableCond = simplifyCondition(item.stable_when)
+                            const unstableCond = simplifyCondition(item.unstable_when)
+                            let conclusion = 'Depende de r'
+                            if (stableCond === 'siempre' || unstableCond === 'nunca') {
+                              conclusion = 'Estable'
+                            } else if (unstableCond === 'siempre' || stableCond === 'nunca') {
+                              conclusion = 'Inestable'
+                            }
+                            return (
+                              <div style={{ marginBottom: '4px' }}>
+                                <strong>Conclusion: </strong>
+                                <span style={{ color: conclusion === 'Estable' ? '#1b8f3a' : conclusion === 'Inestable' ? '#c62828' : '#6d6d6d' }}>
+                                  {conclusion}
+                                </span>
+                              </div>
+                            )
+                          })()}
+                          <div>
+                            <span>Para x* = </span>
+                            <FormulaDisplay inline formula={formatToLatex(item.root)} />
+                          </div>
                           <div>
                             <span>f'(x*) = </span>
                             <FormulaDisplay inline formula={formatToLatex(item.derivative)} />
                           </div>
-                          {item.stable_when ? (
-                            <div>
-                              <span>estable si </span>
-                              {item.stable_when === 'siempre' ? (
-                                <span>siempre</span>
-                              ) : item.stable_when === 'nunca' ? (
-                                <span>nunca</span>
-                              ) : (
-                                <FormulaDisplay inline formula={formatToLatex(item.stable_when)} />
-                              )}
-                            </div>
-                          ) : null}
-                          {item.unstable_when ? (
-                            <div>
-                              <span>inestable si </span>
-                              {item.unstable_when === 'siempre' ? (
-                                <span>siempre</span>
-                              ) : item.unstable_when === 'nunca' ? (
-                                <span>nunca</span>
-                              ) : (
-                                <FormulaDisplay inline formula={formatToLatex(item.unstable_when)} />
-                              )}
-                            </div>
-                          ) : null}
+                          {item.stable_when ? (() => {
+                            const condition = simplifyCondition(item.stable_when)
+                            if (condition === 'nunca' || condition === 'siempre') return null
+                            return (
+                              <div>
+                                <span style={{ color: '#1b8f3a' }}>Estable: </span>
+                                <FormulaDisplay inline formula={formatToLatex(condition)} />
+                              </div>
+                            )
+                          })() : null}
+                          {item.unstable_when ? (() => {
+                            const condition = simplifyCondition(item.unstable_when)
+                            if (condition === 'nunca' || condition === 'siempre') return null
+                            return (
+                              <div>
+                                <span style={{ color: '#c62828' }}>Inestable: </span>
+                                <FormulaDisplay inline formula={formatToLatex(condition)} />
+                              </div>
+                            )
+                          })() : null}
                         </div>
                       ))}
                     </div>
