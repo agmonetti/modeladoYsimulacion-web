@@ -589,6 +589,16 @@ export default function Bifurcations1D() {
       <div className="theory-section">
         <h3>Forma general</h3>
         <p><strong>Autonomo 1D:</strong> dx/dt = f(x, r). Selecciona un modelo o ingresa tu propia funcion.</p>
+        <div className="result-box" style={{ marginTop: '8px' }}>
+          <div className="validation-title">Guia de pasos</div>
+          <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
+            <li>Buscar puntos de equilibrio: resolver f(x, r) = 0.</li>
+            <li>Definir condicion de existencia: cuando esas raices son reales.</li>
+            <li>Analizar estabilidad: evaluar f'(x*) para cada equilibrio.</li>
+            <li>Armar diagrama de bifurcacion: x* vs parametro r, detectar cambios.</li>
+            <li>Hacer diagramas de fase con r &lt; 0, r = 0 y r &gt; 0.</li>
+          </ol>
+        </div>
       </div>
 
       <div className="method-container">

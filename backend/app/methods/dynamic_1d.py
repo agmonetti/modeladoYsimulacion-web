@@ -24,7 +24,7 @@ class Dynamic1DService:
     @staticmethod
     def _parse_expression(expr_str: str, params: Dict[str, float], allowed_symbols: List[str]) -> sp.Expr:
         expr_str = Dynamic1DService._sanitize_expr(expr_str)
-        x = sp.Symbol('x')
+        x = sp.Symbol('x', real=True)
 
         local_dict: Dict[str, Any] = {
             'x': x,
@@ -33,11 +33,11 @@ class Dynamic1DService:
         }
 
         for key in params.keys():
-            local_dict[key] = sp.Symbol(key)
+            local_dict[key] = sp.Symbol(key, real=True)
 
         for sym in allowed_symbols:
             if sym not in local_dict:
-                local_dict[sym] = sp.Symbol(sym)
+                local_dict[sym] = sp.Symbol(sym, real=True)
 
         expr = parse_expr(
             expr_str,
@@ -81,16 +81,23 @@ class Dynamic1DService:
 
     @staticmethod
     def _exact_bifurcation_analysis(expr: sp.Expr, bif_param: str) -> Dict[str, Any]:
-        x = sp.Symbol('x')
-        p = sp.Symbol(bif_param)
+        x = sp.Symbol('x', real=True)
+        p = sp.Symbol(bif_param, real=True)
 
         expr_simplified = sp.simplify(expr)
         deriv_expr = sp.diff(expr_simplified, x)
 
         try:
-            roots = sp.solve(sp.Eq(expr_simplified, 0), x)
+            roots_set = sp.solveset(sp.Eq(expr_simplified, 0), x, domain=sp.S.Reals)
+            if isinstance(roots_set, sp.FiniteSet):
+                roots = list(roots_set)
+            else:
+                raise ValueError('Soluciones no finitas o no reales')
         except Exception:
             roots = []
+
+        if any(root.has(sp.LambertW) for root in roots):
+            raise ValueError('Raices con LambertW no soportadas')
 
         unique_roots: List[sp.Expr] = []
         for root in roots:
@@ -183,7 +190,8 @@ class Dynamic1DService:
         expr = Dynamic1DService._parse_expression(expr_str, params, allowed)
 
         if params:
-            expr = expr.subs(params)
+            subs_map = {sp.Symbol(key, real=True): value for key, value in params.items()}
+            expr = expr.subs(subs_map)
 
         free_symbols = {str(sym) for sym in expr.free_symbols}
         if free_symbols and free_symbols != {'x'}:
@@ -240,7 +248,8 @@ class Dynamic1DService:
     @staticmethod
     def classify_equilibria(f: Callable, roots: List[float]) -> List[Dict[str, Any]]:
         results = []
-        df_tol = 1e-6
+        df_tol = 1e-4
+        f_tol = 1e-6
         for root in roots:
             try:
                 df = float(numerical_derivative(f, root, order=1, h=1e-5))
@@ -257,16 +266,23 @@ class Dynamic1DService:
                     stability = 'inestable'
                     reason = f"f'(x*) = {df:.6g} > 0"
             else:
-                delta = 1e-3 if abs(root) < 1 else 1e-2
+                delta = max(1e-4, abs(root) * 1e-3)
                 try:
                     left = float(f(root - delta))
                     right = float(f(root + delta))
+                    if abs(left) < f_tol:
+                        left = 0.0
+                    if abs(right) < f_tol:
+                        right = 0.0
                     if left > 0 and right < 0:
                         stability = 'estable'
                         reason = f"f(x*-d)>0 y f(x*+d)<0, d={delta:g}"
                     elif left < 0 and right > 0:
                         stability = 'inestable'
                         reason = f"f(x*-d)<0 y f(x*+d)>0, d={delta:g}"
+                    elif left == 0.0 and right == 0.0:
+                        stability = 'indeterminado'
+                        reason = f"f(x*±d)≈0, d={delta:g}"
                     elif math.isfinite(left) and math.isfinite(right):
                         stability = 'semiestable'
                         reason = f"f(x*-d) y f(x*+d) no cambian de signo, d={delta:g}"
@@ -381,7 +397,8 @@ class Dynamic1DService:
 
         model_hint = payload.get('bif_model', model)
 
-        bif_param = payload.get('bif_param', 'r')
+        raw_bif_param = payload.get('bif_param', 'r')
+        bif_param = (raw_bif_param or 'r').strip() or 'r'
         x_min = float(payload.get('x_min', -1))
         x_max = float(payload.get('x_max', 3))
         n_phase = int(payload.get('n_phase', 400))

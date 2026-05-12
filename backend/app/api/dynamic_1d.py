@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+import traceback
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
@@ -100,4 +101,5 @@ def bifurcation_system(req: Dynamic1DBifurcationRequest):
         payload = req.dict()
         return Dynamic1DService.bifurcation(payload)
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
