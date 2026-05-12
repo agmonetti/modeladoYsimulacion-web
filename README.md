@@ -23,9 +23,11 @@ python run.py
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
+
+Nota: pnpm genera pnpm-lock.yaml automaticamente al instalar dependencias.
 
 Frontend corre en: http://localhost:3000
 
