@@ -54,6 +54,12 @@ export default function Dashboard() {
           <small>Equilibrios, estabilidad y evolucion temporal</small>
         </div>
 
+        <div className="method-card" onClick={() => navigate('/dynamic-2d-linear')}>
+          <h3>Sistemas Dinamicos 2D Lineales</h3>
+          <p>Lineales homogeneos con analisis de estabilidad</p>
+          <small>Eigenvalores, nullclines, diagramas de fase</small>
+        </div>
+
         <div className="method-card" onClick={() => navigate('/bifurcations-1d')}>
           <h3>Bifurcaciones 1D</h3>
           <p>Silla nodo, pitchfork y transcrita</p>

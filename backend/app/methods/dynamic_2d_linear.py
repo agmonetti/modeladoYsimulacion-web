@@ -188,7 +188,7 @@ class Dynamic2DLinearService:
             lam2_l = Dynamic2DLinearService._num(lam2)
 
             solution['formula_latex'] = (
-                "X(t) = c_1 e^{" + lam1_l + " t}" + v1_l
+                "X(t) = c_1 e^{" + lam1_l + " t}" + v1_l +
                 " + c_2 e^{" + lam2_l + " t}" + v2_l
             )
             return solution
