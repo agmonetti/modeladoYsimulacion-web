@@ -45,9 +45,15 @@ async def solve_dynamic_2d_formula(request: Dynamic2DFormulaRequest):
     """
     try:
         payload = request.model_dump()
+        print(f"DEBUG: Payload recibido: {payload}")
         result = Dynamic2DFormulaService.solve(payload)
+        print(f"DEBUG: Resultado generado con keys: {list(result.keys())}")
         return result
     except ValueError as e:
+        print(f"DEBUG: ValueError: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"DEBUG: Exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")

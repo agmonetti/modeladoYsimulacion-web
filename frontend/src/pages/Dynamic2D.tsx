@@ -86,6 +86,7 @@ export default function Dynamic2D() {
   const handleSolve = async () => {
     setLoading(true)
     setError('')
+    setResultado(null)
     try {
       // Convertir parámetros a números
       const payload = {
@@ -104,23 +105,33 @@ export default function Dynamic2D() {
       
       const { dynamic2DFormulaService } = await import('../services/api')
       const res = await dynamic2DFormulaService.solve(payload)
-      setResultado(res)
+      
+      // Validar que la respuesta tiene los campos necesarios
+      if (!res || !res.data || !res.data.vector_field || !res.data.trajectories || !res.data.equilibrium) {
+        console.error('Respuesta inválida del servidor:', res)
+        setError('Respuesta inválida del servidor: faltan campos requeridos')
+        setLoading(false)
+        return
+      }
+      
+      setResultado(res.data)
     } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Error al resolver el sistema')
-    } finally {
+      console.error('Error en handleSolve:', err)
+      const errorMsg = err.response?.data?.detail || err.message || 'Error al resolver el sistema'
+      setError(String(errorMsg))
       setLoading(false)
     }
   }
 
   const phasePlot = useMemo(() => {
-    if (!resultado) return null
+    if (!resultado?.vector_field) return null
     const { vector_field, trajectories, equilibrium } = resultado
     const traces: any[] = []
 
     // Campo vectorial
     traces.push({
-      x: vector_field.x,
-      y: vector_field.y,
+      x: vector_field.x || [],
+      y: vector_field.y || [],
       mode: 'markers',
       type: 'scatter',
       marker: { size: 3, color: 'rgba(100, 150, 200, 0.4)' },
@@ -129,19 +140,21 @@ export default function Dynamic2D() {
     })
 
     // Trayectorias
-    trajectories.forEach((traj, idx) => {
-      traces.push({
-        x: traj.x,
-        y: traj.y,
-        mode: 'lines',
-        type: 'scatter',
-        name: `Trayectoria ${idx + 1}`,
-        line: { color: traj.color, width: 1.5 },
+    if (trajectories && Array.isArray(trajectories)) {
+      trajectories.forEach((traj, idx) => {
+        traces.push({
+          x: traj.x || [],
+          y: traj.y || [],
+          mode: 'lines',
+          type: 'scatter',
+          name: `Trayectoria ${idx + 1}`,
+          line: { color: traj.color, width: 1.5 },
+        })
       })
-    })
+    }
 
     // Equilibrio
-    if (equilibrium.x !== null && equilibrium.y !== null) {
+    if (equilibrium?.x !== null && equilibrium?.y !== null) {
       traces.push({
         x: [equilibrium.x],
         y: [equilibrium.y],
@@ -164,10 +177,10 @@ export default function Dynamic2D() {
   }, [resultado])
 
   const timePlot = useMemo(() => {
-    if (!resultado || resultado.trajectories.length === 0) return null
+    if (!resultado?.trajectories || resultado.trajectories.length === 0) return null
     const traces = resultado.trajectories.map((traj, idx) => ({
-      x: Array.from({ length: traj.x.length }, (_, i) => i * resultado.parameters.h),
-      y: traj.x,
+      x: Array.from({ length: (traj.x || []).length }, (_, i) => i * (resultado.parameters?.h || 0.01)),
+      y: traj.x || [],
       mode: 'lines',
       type: 'scatter',
       name: `x(t) - Tray. ${idx + 1}`,
@@ -292,13 +305,10 @@ export default function Dynamic2D() {
       <div className="method-container">
         <div className="form-section">
           <h2>Parámetros del Sistema: Fórmulas Personalizadas</h2>
-          <p style={{ fontSize: '11px', color: '#666', marginBottom: '8px' }}>
-            Ingresa expresiones matemáticas para dx/dt = f(x,y) y dy/dt = g(x,y). 
-            Usa <code>*</code> para multiplicación, <code>**</code> para potencias, y paréntesis según necesites.
-          </p>
 
           <div className="method-selector">
             <label><strong>Ejemplos predefinidos:</strong></label>
+            <p>---- </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
               {Object.entries(exampleSystems).map(([key, example]) => (
                 <button
