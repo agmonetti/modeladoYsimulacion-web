@@ -47,13 +47,6 @@ export const dynamic1DService = {
   bifurcation: (data: any) => api.post('/dynamic-1d/bifurcation', data),
 }
 
-export const dynamic2DLinearService = {
-  solve: (data: any) => api.post('/dynamic-2d-linear/solve', data),
-}
-
-export const dynamic2DFormulaService = {
-  solve: (data: any) => api.post('/dynamic-2d-formula/solve', data),
-}
 
 export const monteCarloService = {
   hitOrMiss: (data: any) => api.post('/monte-carlo/hit-or-miss-1d', data),
