@@ -25,7 +25,7 @@ class Dynamic2DFormulaRequest(BaseModel):
     )
 
 
-router = APIRouter(prefix="/dynamic-2d-formula", tags=["dynamic-2d-formula"])
+router = APIRouter(prefix="/api/dynamic-2d-formula", tags=["dynamic-2d-formula"])
 
 
 @router.post("/solve")
