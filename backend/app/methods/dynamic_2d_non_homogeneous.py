@@ -171,10 +171,7 @@ class Dynamic2DNonHomogeneousService:
         else:
             # Extraer autovalores y autovectores simples
             # evects: list of tuples (eigenvalue, multiplicity, [eigenvectors])
-            lambda1_sym = evects[0][0]
-            lambda2_sym = evects[1][0] if len(evects) > 1 else evects[0][0]
-
-            # Preferir autovectores simbólicos (SymPy) si dan entradas racionales simples.
+            # Queremos alinear el orden simbólico con el orden de autovalores de numpy
             def simplify_sym_vector_to_ints(vec_sym: sp.Matrix):
                 vec = sp.Matrix(vec_sym)
                 dens = [sp.denom(el) for el in vec]
@@ -197,19 +194,64 @@ class Dynamic2DNonHomogeneousService:
                     nums = [-n for n in nums]
                 return nums
 
+            # Construir lista de autovalores simbólicos en el mismo orden que numpy devuelve autovalores
+            eigen_syms_ordered = []
+            used_evects = [False] * len(evects)
+            for idx_num, av in enumerate(autovalores):
+                matched = False
+                for j, ev in enumerate(evects):
+                    if used_evects[j]:
+                        continue
+                    try:
+                        if abs(float(ev[0]) - float(av)) < 1e-6:
+                            eigen_syms_ordered.append(ev[0])
+                            used_evects[j] = True
+                            matched = True
+                            break
+                    except Exception:
+                        continue
+                if not matched:
+                    # si no encontramos por cercanía, usar el siguiente no usado
+                    for j, ev in enumerate(evects):
+                        if not used_evects[j]:
+                            eigen_syms_ordered.append(ev[0])
+                            used_evects[j] = True
+                            break
+
+            # Preferir autovectores simbólicos (SymPy) si dan entradas racionales simples.
             v1_nums = None
             v2_nums = None
             try:
-                # intentar extraer autovectores simbólicos de SymPy (más exactos para matrices enteras/racionales)
-                sym_v1 = evects[0][2][0]
-                v1_try = simplify_sym_vector_to_ints(sym_v1)
-                if v1_try is not None:
-                    v1_nums = v1_try
-                if len(evects) > 1:
-                    sym_v2 = evects[1][2][0]
-                    v2_try = simplify_sym_vector_to_ints(sym_v2)
-                    if v2_try is not None:
-                        v2_nums = v2_try
+                # intentar extraer autovectores simbólicos de SymPy en el orden de numpy
+                sym_vecs_ordered = []
+                for lam_sym in eigen_syms_ordered:
+                    # buscar el evects que corresponde a lam_sym
+                    found = False
+                    for ev in evects:
+                        try:
+                            if abs(float(ev[0]) - float(lam_sym)) < 1e-8:
+                                sym_vecs_ordered.append(ev[2][0])
+                                found = True
+                                break
+                        except Exception:
+                            continue
+                    if not found:
+                        sym_vecs_ordered.append(None)
+
+                # simplificar cada vector simbólico si existe
+                v_nums_list = []
+                for sv in sym_vecs_ordered:
+                    if sv is not None:
+                        v_try = simplify_sym_vector_to_ints(sv)
+                        v_nums_list.append(v_try)
+                    else:
+                        v_nums_list.append(None)
+
+                # asignar por posición (v1 = primero, v2 = segundo) si disponibles
+                if len(v_nums_list) >= 1:
+                    v1_nums = v_nums_list[0]
+                if len(v_nums_list) >= 2:
+                    v2_nums = v_nums_list[1]
             except Exception:
                 v1_nums = None
                 v2_nums = None
@@ -265,9 +307,8 @@ class Dynamic2DNonHomogeneousService:
             autovectores_pasos_latex = []
             # guardamos la relación simbólica (texto) si SymPy la puede producir
             autovectores_relaciones_text_sym = []
-            eigen_syms = [lambda1_sym]
-            if len(evects) > 1:
-                eigen_syms.append(lambda2_sym)
+            # usar la lista de autovalores simbólicos ordenada para coincidir con numpy
+            eigen_syms = eigen_syms_ordered if 'eigen_syms_ordered' in locals() else []
             for lam in eigen_syms:
                 M = A_sym - lam * sp.eye(2)
                 eq1 = sp.Eq(M[0, 0] * k1_sym + M[0, 1] * k2_sym, 0)
@@ -316,7 +357,8 @@ class Dynamic2DNonHomogeneousService:
                     rel_text = f"{lhs} = {rhs_text}"
                 except Exception:
                     rel_text = str(rel).replace('k_1', 'k1').replace('k_2', 'k2')
-                    autovectores_relaciones_text_sym.append(rel_text)
+                # guardar la versión en texto plano de la relación simbólica
+                autovectores_relaciones_text_sym.append(rel_text)
 
             # Normalizar preferentemente para tener primera componente = 1 cuando sea posible
             from fractions import Fraction
@@ -369,13 +411,43 @@ class Dynamic2DNonHomogeneousService:
                     else:
                         autovectores_relaciones_text_norm.append(f"k2 = {ratio.numerator}/{ratio.denominator} k1")
 
-            # Preferir la relación simbólica si SymPy la calculó (coincide mejor con el método algebraico)
+            # Intentar mapear cada relación simbólica al autovector normalizado correspondiente
+            autovectores_relaciones_text = []
             try:
-                if len(autovectores_relaciones_text_sym) == len(autovectores_normalizados) and len(autovectores_relaciones_text_sym) > 0:
-                    autovectores_relaciones_text = autovectores_relaciones_text_sym
-                else:
-                    autovectores_relaciones_text = autovectores_relaciones_text_norm
-            except NameError:
+                # sym vector numeric forms (v1_nums, v2_nums) se obtuvieron arriba si SymPy devolvió autovectores
+                sym_nums_list = []
+                if 'v1_nums' in locals():
+                    sym_nums_list.append(v1_nums)
+                if 'v2_nums' in locals():
+                    sym_nums_list.append(v2_nums)
+
+                used = [False] * len(sym_nums_list
+                )
+                # Para cada autovector normalizado, buscamos la relación simbólica cuyo autovector coincide en dirección
+                for nv in autovectores_normalizados:
+                    matched = False
+                    for j, s_nums in enumerate(sym_nums_list):
+                        if s_nums is None or used[j]:
+                            continue
+                        # normalizar s_nums de forma consistente a la convención (primera componente = 1 si posible)
+                        sx, sy = int(s_nums[0]), int(s_nums[1])
+                        if sx != 0:
+                            frac = Fraction(sy, sx)
+                            sy_norm = int(round(float(frac)))
+                            candidate = {"vx": 1, "vy": sy_norm}
+                        else:
+                            candidate = {"vx": 0, "vy": 1}
+                        if candidate["vx"] == nv["vx"] and candidate["vy"] == nv["vy"]:
+                            # asignar la relación simbólica correspondiente
+                            autovectores_relaciones_text.append(autovectores_relaciones_text_sym[j])
+                            used[j] = True
+                            matched = True
+                            break
+                    if not matched:
+                        # fallback a la relación construida desde el vector normalizado
+                        autovectores_relaciones_text.append(autovectores_relaciones_text_norm[len(autovectores_relaciones_text)])
+            except Exception:
+                # si algo falla, usar el fallback completo
                 autovectores_relaciones_text = autovectores_relaciones_text_norm
 
             # Usar los autovectores *normalizados* para construir las expresiones simbólicas
@@ -384,6 +456,15 @@ class Dynamic2DNonHomogeneousService:
 
             # Actualizar la lista de autovectores de salida a las versiones normalizadas
             list_autovectores = autovectores_normalizados
+
+            # Asegurar que lambda1_sym/lambda2_sym estén definidos (usar el orden simbólico si existe)
+            if 'eigen_syms_ordered' in locals() and len(eigen_syms_ordered) > 0:
+                lambda1_sym = eigen_syms_ordered[0]
+                lambda2_sym = eigen_syms_ordered[1] if len(eigen_syms_ordered) > 1 else eigen_syms_ordered[0]
+            else:
+                # fallback: usar primeros autovalores simbólicos de evects
+                lambda1_sym = evects[0][0]
+                lambda2_sym = evects[1][0] if len(evects) > 1 else evects[0][0]
 
             # Solución homogénea: forma con autovectores sin multiplicar (C1 e^{λ1 t} v1 + C2 e^{λ2 t} v2)
             scalar1 = sp.simplify(C1 * sp.exp(lambda1_sym * t_sym))
