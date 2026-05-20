@@ -9,7 +9,7 @@ import MonteCarlo from './pages/MonteCarlo'
 import Comparator from './pages/Comparator'
 import EDO from './pages/EDO'
 import Dynamic1D from './pages/Dynamic1D'
-import Dynamic2D from './pages/Dynamic2D'
+import Dynamic2D from './pages/Dynamic2DLinear'
 import Bifurcations1D from './pages/Bifurcations1D'
 import './App.css'
 

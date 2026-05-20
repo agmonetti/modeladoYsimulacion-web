@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 import os
 
-from app.api import root_finding, differentiation, integration, interpolation, monte_carlo, ode, dynamic_1d, dynamic_2d_linear, dynamic_2d_formula
+from app.api import root_finding, differentiation, integration, interpolation, monte_carlo, ode, dynamic_1d, dynamic_2d_linear
 
 # Initialize FastAPI
 app = FastAPI(
@@ -34,7 +34,6 @@ app.include_router(monte_carlo.router)
 app.include_router(ode.router) 
 app.include_router(dynamic_1d.router)
 app.include_router(dynamic_2d_linear.router)
-app.include_router(dynamic_2d_formula.router)
 
 @app.get("/")
 def read_root():

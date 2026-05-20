@@ -47,16 +47,18 @@ export const dynamic1DService = {
   bifurcation: (data: any) => api.post('/dynamic-1d/bifurcation', data),
 }
 
-
 export const monteCarloService = {
   hitOrMiss: (data: any) => api.post('/monte-carlo/hit-or-miss-1d', data),
   valorPromedio1d: (data: any) => api.post('/monte-carlo/valor-promedio-1d', data),
   convergencia1d: (data: any) => api.post('/monte-carlo/convergencia-1d', data),
   valorPromedio2d: (data: any) => api.post('/monte-carlo/valor-promedio-2d', data),
-  valorPromedio3d: (data: any) => api.post('/monte-carlo/valor-promedio-3d', data), // <-- ACÁ ESTÁ EL 3D CORRECTO
+  valorPromedio3d: (data: any) => api.post('/monte-carlo/valor-promedio-3d', data),
   estadistico: (data: any) => api.post('/monte-carlo/estadistico-1d', data),
 }
 
-
+// NUEVO SERVICIO AÑADIDO ACÁ (CORREGIDO)
+export const dynamic2DLinearService = {
+  solve: (data: any) => api.post('/dynamic-2d-linear/solve', data),
+}
 
 export default api
