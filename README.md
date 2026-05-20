@@ -12,8 +12,12 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate   # En Linux/Mac
 # o en Windows:
-#py -m venv venv
-# venv\Scripts\activate
+# py -m venv venv
+# Si usas CMD:
+# venv\Scripts\activate.bat
+# Si usas PowerShell:
+# Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+# .\venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
 python run.py
@@ -21,10 +25,23 @@ python run.py
 
 ### Opcion 2: Frontend React (Terminal 2)
 
+Requiere Node.js instalado y disponible en PATH. Si `pnpm` no se reconoce en PowerShell, cerrá y volvé a abrir la terminal luego de instalar Node.js. En Windows también podés habilitar pnpm con Corepack:
+
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
 ```bash
 cd frontend
 pnpm install
 pnpm run dev
+```
+
+Si preferís instalarlo globalmente:
+
+```bash
+npm install -g pnpm
 ```
 
 Nota: pnpm genera pnpm-lock.yaml automaticamente al instalar dependencias.
