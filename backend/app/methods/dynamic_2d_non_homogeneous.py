@@ -174,8 +174,47 @@ class Dynamic2DNonHomogeneousService:
             lambda1_sym = evects[0][0]
             lambda2_sym = evects[1][0] if len(evects) > 1 else evects[0][0]
 
-            # Construir autovectores simples a partir de los autovectores numéricos
-            # para evitar vectores nulos y obtener representaciones enteras simples.
+            # Preferir autovectores simbólicos (SymPy) si dan entradas racionales simples.
+            def simplify_sym_vector_to_ints(vec_sym: sp.Matrix):
+                vec = sp.Matrix(vec_sym)
+                dens = [sp.denom(el) for el in vec]
+                l = 1
+                for d in dens:
+                    l = sp.ilcm(l, d)
+                vec_int = (vec * l).applyfunc(sp.simplify)
+                # convertir a enteros y reducir por GCD
+                nums = [int(sp.sign(el) * abs(sp.Integer(el.as_numer_denom()[0]))) for el in vec_int]
+                g = 0
+                for n in nums:
+                    g = abs(n) if g == 0 else math.gcd(g, abs(n))
+                if g > 1:
+                    nums = [int(n // g) for n in nums]
+                # evitar vector cero
+                if all(n == 0 for n in nums):
+                    return None
+                # Preferir primer componente no negativo para presentación
+                if nums[0] < 0:
+                    nums = [-n for n in nums]
+                return nums
+
+            v1_nums = None
+            v2_nums = None
+            try:
+                # intentar extraer autovectores simbólicos de SymPy (más exactos para matrices enteras/racionales)
+                sym_v1 = evects[0][2][0]
+                v1_try = simplify_sym_vector_to_ints(sym_v1)
+                if v1_try is not None:
+                    v1_nums = v1_try
+                if len(evects) > 1:
+                    sym_v2 = evects[1][2][0]
+                    v2_try = simplify_sym_vector_to_ints(sym_v2)
+                    if v2_try is not None:
+                        v2_nums = v2_try
+            except Exception:
+                v1_nums = None
+                v2_nums = None
+
+            # Si no obtuvimos vectores simbólicos simples, caer al método numérico
             from fractions import Fraction
 
             def numeric_to_simple_ints(v: np.ndarray, max_den: int = 12):
@@ -198,15 +237,19 @@ class Dynamic2DNonHomogeneousService:
                         ints = [1, 0]
                     else:
                         ints = [0, 1]
+                # Preferir primer componente no negativo
+                if ints[0] < 0:
+                    ints = [-val for val in ints]
                 return ints
 
-            # Usar los autovectores numéricos calculados previamente por numpy
             try:
-                v1_nums = numeric_to_simple_ints(autovectores[:, 0].real)
+                if v1_nums is None:
+                    v1_nums = numeric_to_simple_ints(autovectores[:, 0].real)
             except Exception:
                 v1_nums = [1, 0]
             try:
-                v2_nums = numeric_to_simple_ints(autovectores[:, 1].real) if len(autovalores) > 1 else [0, 1]
+                if v2_nums is None:
+                    v2_nums = numeric_to_simple_ints(autovectores[:, 1].real) if len(autovalores) > 1 else [0, 1]
             except Exception:
                 v2_nums = [0, 1]
 
@@ -218,6 +261,100 @@ class Dynamic2DNonHomogeneousService:
                 {"vx": int(v1_nums[0]), "vy": int(v1_nums[1])},
                 {"vx": int(v2_nums[0]), "vy": int(v2_nums[1])}
             ]
+
+            # Generar pasos simbólicos para despejar la relación entre componentes del autovector
+            k1_sym, k2_sym = sp.symbols('k_1 k_2')
+            autovectores_pasos_latex = []
+            autovectores_relaciones_text = []
+            eigen_syms = [lambda1_sym]
+            if len(evects) > 1:
+                eigen_syms.append(lambda2_sym)
+            for lam in eigen_syms:
+                M = A_sym - lam * sp.eye(2)
+                eq1 = sp.Eq(M[0, 0] * k1_sym + M[0, 1] * k2_sym, 0)
+                eq2 = sp.Eq(M[1, 0] * k1_sym + M[1, 1] * k2_sym, 0)
+                # intentar despejar k2 en función de k1 (preferente)
+                try:
+                    if M[0, 1] != 0:
+                        rel = sp.Eq(k2_sym, sp.simplify(-M[0, 0] / M[0, 1] * k1_sym))
+                    elif M[1, 1] != 0:
+                        rel = sp.Eq(k1_sym, sp.simplify(-M[1, 1] / M[1, 0] * k2_sym))
+                    else:
+                        rel = sp.Eq(k2_sym, sp.Integer(0))
+                except Exception:
+                    rel = sp.Eq(k2_sym, sp.Symbol('c'))
+                autovectores_pasos_latex.append({
+                    "sistema_latex": [sp.latex(eq1), sp.latex(eq2)],
+                    "relacion_latex": sp.latex(rel)
+                })
+                # construir una versión en texto plano de la relación, p.ej. 'k2 = -3 k1'
+                try:
+                    lhs = str(rel.lhs).replace('k_1', 'k1').replace('k_2', 'k2')
+                    rhs_expr = rel.rhs
+                    # si rhs es multiplicación de coeficiente racional y k1/k2, extraer coef y variable
+                    if rhs_expr.is_Mul:
+                        coeff = None
+                        var = None
+                        for arg in rhs_expr.args:
+                            if arg.is_Number or arg.is_Rational or arg.is_Integer:
+                                coeff = arg
+                            else:
+                                var = arg
+                        # formatear coeficiente
+                        if coeff is None:
+                            coeff_str = '1'
+                        elif isinstance(coeff, sp.Rational):
+                            if coeff.q == 1:
+                                coeff_str = str(int(coeff.p))
+                            else:
+                                coeff_str = f"{int(coeff.p)}/{int(coeff.q)}"
+                        else:
+                            coeff_str = str(float(coeff))
+                        var_str = str(var).replace('k_1', 'k1').replace('k_2', 'k2') if var is not None else ''
+                        rhs_text = f"{coeff_str} {var_str}".strip()
+                    else:
+                        rhs_text = str(rhs_expr).replace('k_1', 'k1').replace('k_2', 'k2').replace('*', ' ')
+                    rel_text = f"{lhs} = {rhs_text}"
+                except Exception:
+                    rel_text = str(rel).replace('k_1', 'k1').replace('k_2', 'k2')
+                autovectores_relaciones_text.append(rel_text)
+
+            # Normalizar preferentemente para tener primera componente = 1 cuando sea posible
+            from fractions import Fraction
+
+            autovectores_normalizados = []
+            autovectores_relaciones_latex = []
+            autovectores_parametricos_latex = []
+
+            def make_normalized(nums):
+                a, b = nums[0], nums[1]
+                if a != 0:
+                    frac = Fraction(b, a)
+                    # representación racional simplificada
+                    if frac.denominator == 1:
+                        vy_repr = str(frac.numerator)
+                    else:
+                        vy_repr = f"{frac.numerator}/{frac.denominator}"
+                    norm = [1, float(frac)]
+                    # relación k2 = frac * k1  (o -3 k1 = k2)
+                    relacion = f"k_2 = {sp.latex(sp.Rational(frac.numerator, frac.denominator))} k_1"
+                    vector_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}1\\{vy_repr}\\end{{pmatrix}}"
+                else:
+                    # si a == 0, elegimos segunda componente = 1
+                    norm = [0, 1]
+                    relacion = "k_1 = 0"
+                    vector_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}0\\1\\end{{pmatrix}}"
+                return norm, relacion, vector_param
+
+            v1_norm, v1_rel, v1_param = make_normalized(v1_nums)
+            v2_norm, v2_rel, v2_param = make_normalized(v2_nums)
+
+            autovectores_normalizados.append({"vx": v1_norm[0], "vy": v1_norm[1]})
+            autovectores_normalizados.append({"vx": v2_norm[0], "vy": v2_norm[1]})
+            autovectores_relaciones_latex.append(v1_rel)
+            autovectores_relaciones_latex.append(v2_rel)
+            autovectores_parametricos_latex.append(v1_param)
+            autovectores_parametricos_latex.append(v2_param)
 
             # Solución homogénea: forma con autovectores sin multiplicar (C1 e^{λ1 t} v1 + C2 e^{λ2 t} v2)
             scalar1 = sp.simplify(C1 * sp.exp(lambda1_sym * t_sym))
@@ -256,6 +393,16 @@ class Dynamic2DNonHomogeneousService:
             y_t = sp.simplify(sol_general_vectorial[1])
             sol_general_latex = [sp.latex(sp.Eq(xs(t_sym), x_t)), sp.latex(sp.Eq(ys(t_sym), y_t))]
 
+        # Si definimos autovectores_pasos_latex en el flujo anterior, úsalo; si no, vacío
+        try:
+            autovectores_pasos_latex
+        except NameError:
+            autovectores_pasos_latex = []
+        try:
+            autovectores_relaciones_text
+        except NameError:
+            autovectores_relaciones_text = []
+
         real_eigenvectors_lines = []
         if equilibrio_unico and equilibrio_pnto:
             for i in range(len(autovalores)):
@@ -279,6 +426,12 @@ class Dynamic2DNonHomogeneousService:
             "equilibrio": equilibrio_pnto,
             "autovalores": list_autovalores,
             "autovectores": list_autovectores,
+            "autovectores_normalizados": autovectores_normalizados,
+            "autovectores_relaciones_latex": autovectores_relaciones_latex,
+            "autovectores_parametricos_latex": autovectores_parametricos_latex,
+            "autovectores_parametricos_latex": autovectores_parametricos_latex,
+            "autovectores_pasos_latex": autovectores_pasos_latex,
+            "autovectores_relaciones_text": autovectores_relaciones_text,
             "constantes": constantes,
             "solucion_homogenea_vectorial_latex": sol_homogenea_vectorial_latex,
             "solucion_homogenea_vectorial_unmultiplied_latex": sol_homogenea_vectorial_unmultiplied_latex,

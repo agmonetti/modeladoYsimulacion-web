@@ -18,6 +18,9 @@ type SolveResponse = {
   equilibrio: { x: number; y: number } | null;
   autovalores: Autovalor[];
   autovectores: Autovector[];
+  autovectores_normalizados?: Autovector[];
+  autovectores_relaciones_latex?: string[];
+  autovectores_relaciones_text?: string[];
   constantes: { c1: number | string; c2: number | string };
   solucion_homogenea_vectorial_latex: string;
   solucion_homogenea_vectorial_unmultiplied_latex?: string;
@@ -115,6 +118,14 @@ export default function Dynamic2DNonHomogeneous() {
     ];
   }, [resultado]);
 
+  const formatComp = (v: number) => {
+    if (!Number.isFinite(v)) return String(v);
+    const rounded = Math.round(v);
+    // si está muy cerca de un entero (umbral 0.1), mostrar entero
+    if (Math.abs(v - rounded) < 0.1) return String(rounded);
+    return String(Math.round(v * 1000) / 1000);
+  };
+
   return (
     <div className="method-page">
       <h1>Sistemas Dinámicos 2D No Homogéneos</h1>
@@ -175,8 +186,12 @@ export default function Dynamic2DNonHomogeneous() {
                   {resultado.autovalores.map((av, idx) => (
                     <div key={idx} className="validation-row"><span>λ_{idx+1}:</span> <span>{av.real.toFixed(4)} {av.imag >= 0 ? '+' : '-'} {Math.abs(av.imag).toFixed(4)}i</span></div>
                   ))}
-                  {resultado.autovectores.map((v, idx) => (
-                    <div key={idx} className="validation-row"><span>v_{idx+1}:</span> <span>[{v.vx.toFixed(4)}, {v.vy.toFixed(4)}]</span></div>
+                  {/* Mostrar sólo la versión normalizada (la más sencilla) y formateada */}
+                  {resultado.autovectores_normalizados && resultado.autovectores_normalizados.map((v, idx) => (
+                    <div key={`norm-${idx}`} className="validation-row"><span>v_{idx+1} (normalizado):</span> <span>[{formatComp(v.vx as number)}, {formatComp(v.vy as number)}]</span></div>
+                  ))}
+                  {resultado.autovectores_relaciones_text && resultado.autovectores_relaciones_text.map((rel, idx) => (
+                    <div key={`reltext-${idx}`} className="validation-row" style={{marginTop: '0.25rem'}}><span>Relación (sin valores):</span> <span>{rel}</span></div>
                   ))}
                 </div>
               </div>
