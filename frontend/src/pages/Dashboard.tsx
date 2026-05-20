@@ -60,6 +60,12 @@ export default function Dashboard() {
           <small>Eigenvalores, nullclines, diagramas de fase</small>
         </div>
 
+        <div className="method-card" onClick={() => navigate('/dynamic-2d-non-homogeneous')}>
+          <h3>Sistemas Dinamicos 2D No Homogeneos</h3>
+          <p>Resuelve sistemas de la forma X' = AX + B</p>
+          <small>Solución general, particular y homogénea</small>
+        </div>
+
         <div className="method-card" onClick={() => navigate('/bifurcations-1d')}>
           <h3>Bifurcaciones 1D</h3>
           <p>Silla nodo, pitchfork y transcrita</p>

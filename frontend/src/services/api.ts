@@ -61,4 +61,8 @@ export const dynamic2DLinearService = {
   solve: (data: any) => api.post('/dynamic-2d-linear/solve', data),
 }
 
+export const dynamic2DNonHomogeneousService = {
+  solve: (data: any) => api.post('/dynamic-2d-non-homogeneous/solve', data),
+}
+
 export default api
