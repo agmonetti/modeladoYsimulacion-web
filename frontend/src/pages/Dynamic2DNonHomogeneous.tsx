@@ -18,8 +18,13 @@ type SolveResponse = {
   equilibrio: { x: number; y: number } | null;
   autovalores: Autovalor[];
   autovectores: Autovector[];
-  solucion_homogenea_latex: string[];
+  constantes: { c1: number | string; c2: number | string };
+  solucion_homogenea_vectorial_latex: string;
+  solucion_homogenea_vectorial_unmultiplied_latex?: string;
+  solucion_homogenea_componentes_latex?: string[];
   solucion_particular_latex: string[];
+  solucion_general_vectorial_unmultiplied_latex?: string;
+  solucion_general_vectorial_latex: string;
   solucion_general_latex: string[];
   principal_trajectory: { t: number[]; x: number[]; y: number[] };
   automatic_trajectories: AutoTrajectory[];
@@ -179,20 +184,40 @@ export default function Dynamic2DNonHomogeneous() {
               <div className="result-box">
                 <div className="validation-title">3. Solución Homogénea (Xh)</div>
                 <div className="validation-box">
-                  {resultado.solucion_homogenea_latex.map((eq, idx) => <FormulaDisplay key={idx} formula={eq} />)}
+                  {/* Mostrar primero la forma vectorial sin multiplicar si existe */}
+                  <FormulaDisplay formula={resultado.solucion_homogenea_vectorial_unmultiplied_latex || resultado.solucion_homogenea_vectorial_latex} />
+                  {/* Luego mostrar la versión multiplicada y sus componentes */}
+                  {resultado.solucion_homogenea_vectorial_unmultiplied_latex && (
+                    <div style={{marginTop: '0.5rem'}}>
+                      
+                      {resultado.solucion_homogenea_componentes_latex && resultado.solucion_homogenea_componentes_latex.map((eq, idx) => (
+                        <FormulaDisplay key={idx} formula={eq} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="result-box">
                 <div className="validation-title">4. Solución Particular (Xp)</div>
                 <div className="validation-box">
-                  {resultado.solucion_particular_latex.map((eq, idx) => <p key={idx}>{eq}</p>)}
+                  {resultado.solucion_particular_latex.map((eq, idx) => <FormulaDisplay key={idx} formula={eq} />)}
                 </div>
               </div>
 
               <div className="result-box">
                 <div className="validation-title">5. Solución General (X = Xh + Xp)</div>
                 <div className="validation-box">
+                  <p>Calculando constantes con condiciones iniciales:</p>
+                  <div className="validation-row"><span>C1:</span> <span>{typeof resultado.constantes.c1 === 'number' ? resultado.constantes.c1.toFixed(4) : resultado.constantes.c1}</span></div>
+                  <div className="validation-row"><span>C2:</span> <span>{typeof resultado.constantes.c2 === 'number' ? resultado.constantes.c2.toFixed(4) : resultado.constantes.c2}</span></div>
+                  
+                  <p style={{marginTop: '1rem'}}>Forma vectorial de la solución general:</p>
+                  {/* Mostrar la forma general sin multiplicar primero si está disponible */}
+                  <FormulaDisplay formula={resultado.solucion_general_vectorial_unmultiplied_latex || resultado.solucion_general_vectorial_latex} />
+
+
+                  <p style={{marginTop: '1rem'}}>Solución general para x(t) e y(t):</p>
                   {resultado.solucion_general_latex.map((eq, idx) => <FormulaDisplay key={idx} formula={eq} />)}
                 </div>
               </div>

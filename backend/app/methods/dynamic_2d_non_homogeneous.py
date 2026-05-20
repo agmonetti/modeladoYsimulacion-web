@@ -147,45 +147,114 @@ class Dynamic2DNonHomogeneousService:
                         "y": X_auto[::5, 1].tolist()
                     })
 
-        def to_num(val):
-            return int(val) if val.is_integer() else val
-
-        a_sym, b_sym, c_sym, d_sym = to_num(a), to_num(b), to_num(c), to_num(d)
-        e_sym, f_sym = to_num(e), to_num(f)
-        x0_sym, y0_sym, t0_sym = to_num(x0), to_num(y0), to_num(t0)
-
         t_sym = sp.symbols('t', real=True)
+        C1, C2 = sp.symbols('C1 C2')
+        # Definiciones de funciones simbólicas para generar ecuaciones en LaTeX
         xs, ys = sp.Function('x'), sp.Function('y')
 
-        # Solución Homogénea
-        sol_homogenea_latex = []
-        try:
-            C1, C2 = sp.symbols('C1 C2')
-            # Usamos dsolve sin condiciones iniciales para la forma general
-            eq1_h = sp.Eq(sp.diff(xs(t_sym), t_sym), a_sym * xs(t_sym) + b_sym * ys(t_sym))
-            eq2_h = sp.Eq(sp.diff(ys(t_sym), t_sym), c_sym * xs(t_sym) + d_sym * ys(t_sym))
-            sol_homogenea = sp.dsolve([eq1_h, eq2_h])
-            sol_homogenea_latex = [sp.latex(eq) for eq in sol_homogenea]
-        except Exception:
-            sol_homogenea_latex = ["SymPy no pudo resolver la parte homogénea."]
+        # 1. Solución Homogénea (forma general) con C1, C2 simbólicos
+        # Usamos SymPy para obtener autovalores/autovectores simbólicos más simples
+        A_sym = sp.Matrix([[a, b], [c, d]])
+        evects = A_sym.eigenvects()
 
-        # Solución Particular
-        sol_particular_latex = []
-        if equilibrio_unico and equilibrio_pnto:
-            sol_particular_latex = [
-                f"x_p(t) = {equilibrio_pnto['x']:.4f}",
-                f"y_p(t) = {equilibrio_pnto['y']:.4f}"
+        # Manejo sencillo: si aparecen autovalores complejos, devolvemos placeholder
+        complex_eigen = any([ev[0].has(sp.I) for ev in evects])
+        if complex_eigen:
+            sol_homogenea_vectorial_latex = "X_h(t) = ..."
+            sol_homogenea_vectorial_unmultiplied_latex = "X_h(t) = ..."
+            sol_homogenea_componentes_latex = ["x_h(t) no calculada", "y_h(t) no calculada"]
+            sol_particular_latex = ["Solución particular no mostrada para caso complejo"]
+            constantes = {"c1": "C1", "c2": "C2"}
+            sol_general_vectorial_latex = "X(t) = X_h(t) + X_p"
+            sol_general_vectorial_unmultiplied_latex = "X(t) = ..."
+            sol_general_latex = ["Solución general no calculada (autovalores complejos)"]
+        else:
+            # Extraer autovalores y autovectores simples
+            # evects: list of tuples (eigenvalue, multiplicity, [eigenvectors])
+            lambda1_sym = evects[0][0]
+            lambda2_sym = evects[1][0] if len(evects) > 1 else evects[0][0]
+
+            # Construir autovectores simples a partir de los autovectores numéricos
+            # para evitar vectores nulos y obtener representaciones enteras simples.
+            from fractions import Fraction
+
+            def numeric_to_simple_ints(v: np.ndarray, max_den: int = 12):
+                comps = [float(x) for x in v]
+                frs = [Fraction(c).limit_denominator(max_den) for c in comps]
+                dens = [fr.denominator for fr in frs]
+                l = 1
+                for d in dens:
+                    l = l * d // math.gcd(l, d)
+                ints = [fr.numerator * (l // fr.denominator) for fr in frs]
+                # reducir por GCD
+                g = 0
+                for val in ints:
+                    g = abs(val) if g == 0 else math.gcd(g, abs(val))
+                if g > 1:
+                    ints = [int(val // g) for val in ints]
+                # evitar el vector cero
+                if all(val == 0 for val in ints):
+                    if abs(comps[0]) >= abs(comps[1]):
+                        ints = [1, 0]
+                    else:
+                        ints = [0, 1]
+                return ints
+
+            # Usar los autovectores numéricos calculados previamente por numpy
+            try:
+                v1_nums = numeric_to_simple_ints(autovectores[:, 0].real)
+            except Exception:
+                v1_nums = [1, 0]
+            try:
+                v2_nums = numeric_to_simple_ints(autovectores[:, 1].real) if len(autovalores) > 1 else [0, 1]
+            except Exception:
+                v2_nums = [0, 1]
+
+            # Crear vectores simbólicos enteros simples para la solución homogénea
+            v1_sym = sp.Matrix(v1_nums)
+            v2_sym = sp.Matrix(v2_nums)
+
+            list_autovectores = [
+                {"vx": int(v1_nums[0]), "vy": int(v1_nums[1])},
+                {"vx": int(v2_nums[0]), "vy": int(v2_nums[1])}
             ]
 
-        # Solución General
-        sol_general_latex = []
-        try:
-            eq1_g = sp.Eq(sp.diff(xs(t_sym), t_sym), a_sym * xs(t_sym) + b_sym * ys(t_sym) + e_sym)
-            eq2_g = sp.Eq(sp.diff(ys(t_sym), t_sym), c_sym * xs(t_sym) + d_sym * ys(t_sym) + f_sym)
-            sol_general = sp.dsolve([eq1_g, eq2_g], ics={xs(t0_sym): x0_sym, ys(t0_sym): y0_sym})
-            sol_general_latex = [sp.latex(eq) for eq in sol_general]
-        except Exception:
-            sol_general_latex = ["SymPy no pudo resolver el sistema completo."]
+            # Solución homogénea: forma con autovectores sin multiplicar (C1 e^{λ1 t} v1 + C2 e^{λ2 t} v2)
+            scalar1 = sp.simplify(C1 * sp.exp(lambda1_sym * t_sym))
+            scalar2 = sp.simplify(C2 * sp.exp(lambda2_sym * t_sym))
+            vec1_latex = sp.latex(v1_sym)
+            vec2_latex = sp.latex(v2_sym)
+            sol_homogenea_vectorial_unmultiplied_latex = f"X_h(t) = {sp.latex(scalar1)} {vec1_latex} + {sp.latex(scalar2)} {vec2_latex}"
+
+            # Versión multiplicada y simplificada (componentes explícitas)
+            sol_homogenea_vectorial = C1 * v1_sym * sp.exp(lambda1_sym * t_sym) + C2 * v2_sym * sp.exp(lambda2_sym * t_sym)
+            sol_homogenea_vectorial_latex = f"X_h(t) = {sp.latex(sol_homogenea_vectorial)}"
+
+            # Componentes x_h(t) y y_h(t) de la solución homogénea (multiplicada)
+            xh_t = sp.simplify(sol_homogenea_vectorial[0])
+            yh_t = sp.simplify(sol_homogenea_vectorial[1])
+            sol_homogenea_componentes_latex = [sp.latex(sp.Eq(xs(t_sym), xh_t)), sp.latex(sp.Eq(ys(t_sym), yh_t))]
+
+            # 2. Solución Particular (punto de equilibrio)
+            Xp = np.zeros(2)
+            if equilibrio_pnto:
+                Xp = np.array([equilibrio_pnto['x'], equilibrio_pnto['y']])
+            sol_particular_latex = [f"X_p = \\begin{{pmatrix}} {Xp[0]:.4f} \\\\ {Xp[1]:.4f} \\end{{pmatrix}}"]
+
+            # 3. No calculamos numéricamente C1, C2: los dejamos simbólicos
+            constantes = {"c1": "C1", "c2": "C2"}
+
+            # 4. Solución general vectorial simbólica: mostrar primero la parte homogénea sin multiplicar
+            Xp_sym = sp.Matrix(Xp)
+            sol_general_vectorial_unmultiplied_latex = f"X(t) = {sp.latex(scalar1)} {vec1_latex} + {sp.latex(scalar2)} {vec2_latex} + {sp.latex(Xp_sym)}"
+
+            # 5. Solución general multiplicada y simplificada (componentes explícitas)
+            sol_general_vectorial = sol_homogenea_vectorial + Xp_sym
+            sol_general_vectorial_latex = f"X(t) = {sp.latex(sol_general_vectorial)}"
+
+            x_t = sp.simplify(sol_general_vectorial[0])
+            y_t = sp.simplify(sol_general_vectorial[1])
+            sol_general_latex = [sp.latex(sp.Eq(xs(t_sym), x_t)), sp.latex(sp.Eq(ys(t_sym), y_t))]
 
         real_eigenvectors_lines = []
         if equilibrio_unico and equilibrio_pnto:
@@ -210,10 +279,16 @@ class Dynamic2DNonHomogeneousService:
             "equilibrio": equilibrio_pnto,
             "autovalores": list_autovalores,
             "autovectores": list_autovectores,
-            "solucion_homogenea_latex": sol_homogenea_latex,
+            "constantes": constantes,
+            "solucion_homogenea_vectorial_latex": sol_homogenea_vectorial_latex,
+            "solucion_homogenea_vectorial_unmultiplied_latex": sol_homogenea_vectorial_unmultiplied_latex,
+            "solucion_homogenea_componentes_latex": sol_homogenea_componentes_latex,
             "solucion_particular_latex": sol_particular_latex,
+            "solucion_general_vectorial_unmultiplied_latex": sol_general_vectorial_unmultiplied_latex,
+            "solucion_general_vectorial_latex": sol_general_vectorial_latex,
             "solucion_general_latex": sol_general_latex,
             "principal_trajectory": principal_trajectory,
             "automatic_trajectories": automatic_trajectories,
             "real_eigenvectors_lines": real_eigenvectors_lines
         }
+
