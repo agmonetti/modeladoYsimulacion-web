@@ -47,6 +47,11 @@ export const dynamic1DService = {
   bifurcation: (data: any) => api.post('/dynamic-1d/bifurcation', data),
 }
 
+export const dynamic2DService = {
+  solve: (data: any) => api.post('/dynamic-2d/solve', data),
+}
+
+
 
 export const monteCarloService = {
   hitOrMiss: (data: any) => api.post('/monte-carlo/hit-or-miss-1d', data),

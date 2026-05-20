@@ -9,12 +9,11 @@ import MonteCarlo from './pages/MonteCarlo'
 import Comparator from './pages/Comparator'
 import EDO from './pages/EDO'
 import Dynamic1D from './pages/Dynamic1D'
-import Dynamic2D from './pages/Dynamic2D'
 import Bifurcations1D from './pages/Bifurcations1D'
+import Dynamic2D from './pages/Dynamic2D'
 import './App.css'
 
 function App() {
-  // Estado para controlar la barra lateral en mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
@@ -22,7 +21,6 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* Botón de Menú para Mobile (Oculto en PC) */}
       <div className="mobile-header">
         <button className="menu-btn" onClick={toggleSidebar}>
           <span style={{ fontWeight: 'bold' }}>⊞ Menú</span>
@@ -30,7 +28,6 @@ function App() {
         <span className="mobile-title">Métodos Numéricos</span>
       </div>
 
-      {/* Sombra de fondo cuando el menú está abierto en mobile */}
       {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
 
       <nav className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
@@ -38,7 +35,6 @@ function App() {
           <h2>Metodos Numericos</h2>
         </div>
         
-        {/* Agregamos el closeSidebar a cada link para que se cierre al elegir un método */}
         <ul className="nav-menu">
           <li><Link to="/" onClick={closeSidebar}>Inicio</Link></li>
           <li className="section-title">Raices</li>
@@ -61,7 +57,6 @@ function App() {
           
           <li className="section-title">Sistemas Dinamicos</li>
           <li><Link to="/dynamic-1d" onClick={closeSidebar}>SD Autonomos 1D</Link></li>
-          <li><Link to="/dynamic-2d-linear" onClick={closeSidebar}>SD Lineales 2D</Link></li>
           <li><Link to="/bifurcations-1d" onClick={closeSidebar}>Bifurcaciones 1D</Link></li>
           
           <li className="section-title">Herramientas</li>
@@ -78,11 +73,10 @@ function App() {
           <Route path="/interpolation" element={<Interpolation />} />
           <Route path="/monte-carlo" element={<MonteCarlo />} />
           <Route path="/comparator" element={<Comparator />} />
-          {/* Agregamos la ruta para EDOs */}
           <Route path="/edo" element={<EDO />} />
           <Route path="/dynamic-1d" element={<Dynamic1D />} />
-          <Route path="/dynamic-2d-linear" element={<Dynamic2D />} />
           <Route path="/bifurcations-1d" element={<Bifurcations1D />} />
+          <Route path="/dynamic-2d" element={<Dynamic2D />} />
         </Routes>
       </main>
     </div>
