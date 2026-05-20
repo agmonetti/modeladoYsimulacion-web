@@ -10,7 +10,7 @@ type Autovector = { vx: number; vy: number };
 
 type SolveResponse = {
   matrix_a: number[][];
-  vector_b: number[];
+  vector_b: Array<number | string>;
   traza: number;
   determinante: number;
   clasificacion_homogenea: string;
@@ -57,7 +57,7 @@ export default function Dynamic2DNonHomogeneous() {
     try {
       const payload = {
         a: parseFloat(a), b: parseFloat(b), c: parseFloat(c), d: parseFloat(d),
-        e: parseFloat(e_val), f: parseFloat(f_val), x0: parseFloat(x0), y0: parseFloat(y0),
+        e: e_val, f: f_val, x0: parseFloat(x0), y0: parseFloat(y0),
         t_fin: parseFloat(tFin), h: parseFloat(hStep),
         x_min: -5, x_max: 5, y_min: -5, y_max: 5, cantidad_trayectorias: 20
       };
@@ -121,9 +121,8 @@ export default function Dynamic2DNonHomogeneous() {
   const formatComp = (v: number) => {
     if (!Number.isFinite(v)) return String(v);
     const rounded = Math.round(v);
-    // si está muy cerca de un entero (umbral 0.1), mostrar entero
-    if (Math.abs(v - rounded) < 0.1) return String(rounded);
-    return String(Math.round(v * 1000) / 1000);
+    if (Math.abs(v - rounded) < 1e-9) return String(rounded);
+    return (Math.round(v * 1000) / 1000).toFixed(3);
   };
 
   return (
@@ -146,9 +145,12 @@ export default function Dynamic2DNonHomogeneous() {
           </div>
           
           <h2>Vector de Forzamiento (B)</h2>
+          <p style={{margin: '0 0 0.5rem 0', fontSize: '0.92rem'}}>
+            Puedes escribir valores constantes o funciones de <strong>t</strong>, por ejemplo <strong>cos(t)</strong> o <strong>sin(t)</strong>.
+          </p>
           <div className="vector-input-grid">
-            <div className="form-group"><label>e:</label><input type="number" value={e_val} onChange={e => setE(e.target.value)} /></div>
-            <div className="form-group"><label>f:</label><input type="number" value={f_val} onChange={e => setF(e.target.value)} /></div>
+            <div className="form-group"><label>e(t):</label><input type="text" value={e_val} onChange={e => setE(e.target.value)} /></div>
+            <div className="form-group"><label>f(t):</label><input type="text" value={f_val} onChange={e => setF(e.target.value)} /></div>
           </div>
 
           <h2>Condiciones Iniciales y Simulación</h2>
@@ -188,10 +190,10 @@ export default function Dynamic2DNonHomogeneous() {
                   ))}
                   {/* Mostrar sólo la versión normalizada (la más sencilla) y formateada */}
                   {resultado.autovectores_normalizados && resultado.autovectores_normalizados.map((v, idx) => (
-                    <div key={`norm-${idx}`} className="validation-row"><span>v_{idx+1}:</span> <span>[{formatComp(v.vx as number)}, {formatComp(v.vy as number)}]</span></div>
-                  ))}
-                  {resultado.autovectores_relaciones_text && resultado.autovectores_relaciones_text.map((rel, idx) => (
-                    <div key={`reltext-${idx}`} className="validation-row" style={{marginTop: '0.25rem'}}><span>Relación (sin valores):</span> <span>{rel}</span></div>
+                    <React.Fragment key={`norm-${idx}`}>
+                      <div className="validation-row"><span>v_{idx+1}:</span> <span>[{formatComp(v.vx as number)}, {formatComp(v.vy as number)}]</span></div>
+                      <div className="validation-row" style={{marginTop: '0.25rem'}}><span>Relación v_{idx + 1}:</span> <span>{resultado.autovectores_relaciones_text?.[idx] || ''}</span></div>
+                    </React.Fragment>
                   ))}
                 </div>
               </div>

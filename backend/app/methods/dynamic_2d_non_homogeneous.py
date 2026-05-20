@@ -1,6 +1,7 @@
 import numpy as np
 import sympy as sp
 import math
+from fractions import Fraction
 from typing import Dict, Any, List
 
 class Dynamic2DNonHomogeneousService:
@@ -62,15 +63,24 @@ class Dynamic2DNonHomogeneousService:
         X_vals = np.zeros((len(t_vals), 2))
         X_vals[0] = X0
 
+        if callable(B):
+            def eval_B(ti):
+                return np.array(B(ti), dtype=float)
+        else:
+            B_vec = np.array(B, dtype=float)
+
+            def eval_B(ti):
+                return B_vec
+
         for i in range(len(t_vals) - 1):
             ti = t_vals[i]
             Xi = X_vals[i]
             h_loc = t_vals[i + 1] - ti
 
-            k1 = A @ Xi + B
-            k2 = A @ (Xi + h_loc * k1 / 2) + B
-            k3 = A @ (Xi + h_loc * k2 / 2) + B
-            k4 = A @ (Xi + h_loc * k3) + B
+            k1 = A @ Xi + eval_B(ti)
+            k2 = A @ (Xi + h_loc * k1 / 2) + eval_B(ti + h_loc / 2)
+            k3 = A @ (Xi + h_loc * k2 / 2) + eval_B(ti + h_loc / 2)
+            k4 = A @ (Xi + h_loc * k3) + eval_B(ti + h_loc)
 
             X_vals[i + 1] = Xi + (h_loc / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
 
@@ -82,8 +92,8 @@ class Dynamic2DNonHomogeneousService:
         b = float(payload.get('b', -1.0))
         c = float(payload.get('c', -9.0))
         d = float(payload.get('d', 0.0))
-        e = float(payload.get('e', 1.0))
-        f = float(payload.get('f', 9.0))
+        e_raw = payload.get('e', 1.0)
+        f_raw = payload.get('f', 9.0)
         x0 = float(payload.get('x0', 1.0))
         y0 = float(payload.get('y0', 1.0))
         t0 = float(payload.get('t0', 0.0))
@@ -95,17 +105,44 @@ class Dynamic2DNonHomogeneousService:
         y_max = float(payload.get('y_max', 5.0))
         cantidad_trayectorias = int(payload.get('cantidad_trayectorias', 16))
 
+        t_sym = sp.symbols('t', real=True)
+
+        def parse_forcing_component(value):
+            if isinstance(value, (int, float, np.integer, np.floating)):
+                return sp.Float(value)
+            text = str(value).strip()
+            try:
+                return sp.sympify(text, locals={'t': t_sym, 'sin': sp.sin, 'cos': sp.cos, 'tan': sp.tan, 'exp': sp.exp, 'pi': sp.pi})
+            except Exception:
+                return sp.Float(text)
+
+        e_expr = parse_forcing_component(e_raw)
+        f_expr = parse_forcing_component(f_raw)
+        forcing_is_time_varying = bool((getattr(e_expr, 'free_symbols', set()) and t_sym in e_expr.free_symbols) or (getattr(f_expr, 'free_symbols', set()) and t_sym in f_expr.free_symbols))
+
         A = np.array([[a, b], [c, d]], dtype=float)
-        B = np.array([e, f], dtype=float)
+        if forcing_is_time_varying:
+            e_func = sp.lambdify(t_sym, e_expr, 'numpy')
+            f_func = sp.lambdify(t_sym, f_expr, 'numpy')
+
+            def B(ti):
+                return np.array([float(e_func(ti)), float(f_func(ti))], dtype=float)
+        else:
+            B = np.array([float(sp.N(e_expr)), float(sp.N(f_expr))], dtype=float)
 
         det_A = float(np.linalg.det(A))
-        equilibrio_unico = abs(det_A) > 1e-12
+        equilibrio_unico = abs(det_A) > 1e-12 and not forcing_is_time_varying
         equilibrio_pnto = None
         if equilibrio_unico:
             eq = -np.linalg.solve(A, B)
             equilibrio_pnto = {"x": float(eq[0]), "y": float(eq[1])}
 
         autovalores, autovectores = np.linalg.eig(A)
+        # Fijar un orden estable: primero el autovalor con parte real mayor.
+        # Esto hace que v1/v2 no cambien de lugar entre ejecuciones.
+        order = np.argsort([-float(np.real(av)) for av in autovalores])
+        autovalores = autovalores[order]
+        autovectores = autovectores[:, order]
         traza = float(np.trace(A))
         discriminante = traza**2 - 4 * det_A
         clasificacion = Dynamic2DNonHomogeneousService.clasificar_sistema(A)
@@ -147,7 +184,6 @@ class Dynamic2DNonHomogeneousService:
                         "y": X_auto[::5, 1].tolist()
                     })
 
-        t_sym = sp.symbols('t', real=True)
         C1, C2 = sp.symbols('C1 C2')
         # Definiciones de funciones simbólicas para generar ecuaciones en LaTeX
         xs, ys = sp.Function('x'), sp.Function('y')
@@ -305,24 +341,33 @@ class Dynamic2DNonHomogeneousService:
             # Generar pasos simbólicos para despejar la relación entre componentes del autovector
             k1_sym, k2_sym = sp.symbols('k_1 k_2')
             autovectores_pasos_latex = []
-            # guardamos la relación simbólica (texto) si SymPy la puede producir
+            # guardamos la relación simbólica y el objeto relacional para derivar luego el vector
             autovectores_relaciones_text_sym = []
+            autovectores_relaciones_obj = []
             # usar la lista de autovalores simbólicos ordenada para coincidir con numpy
             eigen_syms = eigen_syms_ordered if 'eigen_syms_ordered' in locals() else []
             for lam in eigen_syms:
                 M = A_sym - lam * sp.eye(2)
                 eq1 = sp.Eq(M[0, 0] * k1_sym + M[0, 1] * k2_sym, 0)
                 eq2 = sp.Eq(M[1, 0] * k1_sym + M[1, 1] * k2_sym, 0)
-                # intentar despejar k2 en función de k1 (preferente)
-                try:
-                    if M[0, 1] != 0:
-                        rel = sp.Eq(k2_sym, sp.simplify(-M[0, 0] / M[0, 1] * k1_sym))
-                    elif M[1, 1] != 0:
-                        rel = sp.Eq(k1_sym, sp.simplify(-M[1, 1] / M[1, 0] * k2_sym))
-                    else:
-                        rel = sp.Eq(k2_sym, sp.Integer(0))
-                except Exception:
-                    rel = sp.Eq(k2_sym, sp.Symbol('c'))
+                basis = M.nullspace()
+                basis_vec = basis[0] if basis else None
+                if basis_vec is not None:
+                    basis_nums = simplify_sym_vector_to_ints(basis_vec)
+                    if basis_nums is None:
+                        basis_nums = [1, 0]
+                else:
+                    basis_nums = [1, 0]
+
+                if basis_nums[0] == 0 and basis_nums[1] != 0:
+                    rel = sp.Eq(k1_sym, 0)
+                elif basis_nums[1] == 0 and basis_nums[0] != 0:
+                    rel = sp.Eq(k2_sym, 0)
+                elif basis_nums[0] != 0:
+                    coeff_rel = sp.Rational(basis_nums[1], basis_nums[0])
+                    rel = sp.Eq(k2_sym, sp.simplify(coeff_rel * k1_sym))
+                else:
+                    rel = sp.Eq(k2_sym, sp.Integer(0))
                 autovectores_pasos_latex.append({
                     "sistema_latex": [sp.latex(eq1), sp.latex(eq2)],
                     "relacion_latex": sp.latex(rel)
@@ -359,34 +404,91 @@ class Dynamic2DNonHomogeneousService:
                     rel_text = str(rel).replace('k_1', 'k1').replace('k_2', 'k2')
                 # guardar la versión en texto plano de la relación simbólica
                 autovectores_relaciones_text_sym.append(rel_text)
+                autovectores_relaciones_obj.append(rel)
 
-            # Normalizar preferentemente para tener primera componente = 1 cuando sea posible
-            from fractions import Fraction
-
+            # Normalizar a partir de la relación del sistema: primero se despeja, luego se fija la componente libre.
             autovectores_normalizados = []
             autovectores_relaciones_latex = []
             autovectores_parametricos_latex = []
 
-            def make_normalized(nums):
-                a, b = nums[0], nums[1]
-                if a != 0:
-                    frac = Fraction(b, a)
-                    # convertir a float y redondear a entero para presentación
-                    vy_float = float(frac)
-                    vy_rounded = int(round(vy_float))
-                    norm = [1, vy_rounded]
-                    # relación k2 = vy_rounded * k1
-                    relacion = f"k_2 = {vy_rounded} k_1"
-                    vector_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}1\\{vy_rounded}\\end{{pmatrix}}"
-                else:
-                    # si a == 0, elegimos segunda componente = 1
-                    norm = [0, 1]
-                    relacion = "k_1 = 0"
-                    vector_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}0\\1\\end{{pmatrix}}"
-                return norm, relacion, vector_param
+            def relation_to_vector(rel, fallback_nums):
+                def simplificar_coefs(coeff):
+                    coeff = sp.nsimplify(coeff)
+                    if coeff.is_Rational:
+                        return coeff
+                    try:
+                        return sp.Rational(coeff)
+                    except Exception:
+                        return coeff
 
-            v1_norm, v1_rel, v1_param = make_normalized(v1_nums)
-            v2_norm, v2_rel, v2_param = make_normalized(v2_nums)
+                def vector_from_coeff(lhs_is_k2, coeff):
+                    coeff = simplificar_coefs(coeff)
+                    if coeff == 0:
+                        return [1, 0] if lhs_is_k2 else [0, 1]
+                    if isinstance(coeff, sp.Rational):
+                        p, q = int(coeff.p), int(coeff.q)
+                        if lhs_is_k2:
+                            return [q, p]
+                        return [p, q]
+                    try:
+                        val = float(coeff)
+                        rounded = int(round(val))
+                        return [1, rounded] if lhs_is_k2 else [rounded, 1]
+                    except Exception:
+                        a, b = fallback_nums[0], fallback_nums[1]
+                        return [int(a), int(b)]
+
+                if rel is None:
+                    a, b = fallback_nums[0], fallback_nums[1]
+                    if a == 0 and b == 0:
+                        return [1, 0]
+                    if a == 0:
+                        return [0, 1]
+                    ratio = Fraction(b, a)
+                    if ratio.denominator == 1:
+                        return [1, int(ratio)]
+                    return [ratio.denominator, ratio.numerator]
+
+                if rel.lhs == k2_sym:
+                    coeff = sp.simplify(rel.rhs / k1_sym) if rel.rhs != 0 else sp.Integer(0)
+                    vec = vector_from_coeff(True, coeff)
+                elif rel.lhs == k1_sym:
+                    coeff = sp.simplify(rel.rhs / k2_sym) if rel.rhs != 0 else sp.Integer(0)
+                    vec = vector_from_coeff(False, coeff)
+                else:
+                    a, b = fallback_nums[0], fallback_nums[1]
+                    vec = [int(a), int(b)]
+
+                if vec[0] == 0 and vec[1] == 0:
+                    vec = [1, 0]
+                if vec[0] != 0:
+                    gcd = math.gcd(abs(int(vec[0])), abs(int(vec[1]))) if vec[1] != 0 else abs(int(vec[0]))
+                    if gcd > 1:
+                        vec = [int(vec[0] // gcd), int(vec[1] // gcd)]
+                return vec
+
+            def relation_text_from_vector(vec):
+                vx, vy = int(vec[0]), int(vec[1])
+                if vx == 0 and vy == 0:
+                    return ""
+                if vy == 0:
+                    return "k2 = 0"
+                if vx == 0:
+                    return "k1 = 0"
+                ratio = Fraction(vy, vx)
+                if ratio.denominator == 1:
+                    return f"k2 = {ratio.numerator} k1"
+                return f"k2 = {ratio.numerator}/{ratio.denominator} k1"
+
+            rel_v1 = autovectores_relaciones_obj[0] if len(autovectores_relaciones_obj) > 0 else None
+            rel_v2 = autovectores_relaciones_obj[1] if len(autovectores_relaciones_obj) > 1 else None
+
+            v1_norm = relation_to_vector(rel_v1, v1_nums)
+            v2_norm = relation_to_vector(rel_v2, v2_nums)
+            v1_rel = relation_text_from_vector(v1_norm)
+            v2_rel = relation_text_from_vector(v2_norm)
+            v1_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}{v1_norm[0]}\\\\{v1_norm[1]}\\end{{pmatrix}}"
+            v2_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}{v2_norm[0]}\\\\{v2_norm[1]}\\end{{pmatrix}}"
 
             autovectores_normalizados.append({"vx": v1_norm[0], "vy": v1_norm[1]})
             autovectores_normalizados.append({"vx": v2_norm[0], "vy": v2_norm[1]})
@@ -395,60 +497,8 @@ class Dynamic2DNonHomogeneousService:
             autovectores_parametricos_latex.append(v1_param)
             autovectores_parametricos_latex.append(v2_param)
 
-            # Construir relaciones a partir de los autovectores normalizados (enteros)
-            autovectores_relaciones_text_norm = []
-            for v in autovectores_normalizados:
-                vxn = v['vx']
-                vyn = v['vy']
-                if vxn == 1:
-                    autovectores_relaciones_text_norm.append(f"k2 = {vyn} k1")
-                elif vxn == 0:
-                    autovectores_relaciones_text_norm.append("k1 = 0")
-                else:
-                    ratio = Fraction(vyn, vxn)
-                    if ratio.denominator == 1:
-                        autovectores_relaciones_text_norm.append(f"k2 = {ratio.numerator} k1")
-                    else:
-                        autovectores_relaciones_text_norm.append(f"k2 = {ratio.numerator}/{ratio.denominator} k1")
-
-            # Intentar mapear cada relación simbólica al autovector normalizado correspondiente
-            autovectores_relaciones_text = []
-            try:
-                # sym vector numeric forms (v1_nums, v2_nums) se obtuvieron arriba si SymPy devolvió autovectores
-                sym_nums_list = []
-                if 'v1_nums' in locals():
-                    sym_nums_list.append(v1_nums)
-                if 'v2_nums' in locals():
-                    sym_nums_list.append(v2_nums)
-
-                used = [False] * len(sym_nums_list
-                )
-                # Para cada autovector normalizado, buscamos la relación simbólica cuyo autovector coincide en dirección
-                for nv in autovectores_normalizados:
-                    matched = False
-                    for j, s_nums in enumerate(sym_nums_list):
-                        if s_nums is None or used[j]:
-                            continue
-                        # normalizar s_nums de forma consistente a la convención (primera componente = 1 si posible)
-                        sx, sy = int(s_nums[0]), int(s_nums[1])
-                        if sx != 0:
-                            frac = Fraction(sy, sx)
-                            sy_norm = int(round(float(frac)))
-                            candidate = {"vx": 1, "vy": sy_norm}
-                        else:
-                            candidate = {"vx": 0, "vy": 1}
-                        if candidate["vx"] == nv["vx"] and candidate["vy"] == nv["vy"]:
-                            # asignar la relación simbólica correspondiente
-                            autovectores_relaciones_text.append(autovectores_relaciones_text_sym[j])
-                            used[j] = True
-                            matched = True
-                            break
-                    if not matched:
-                        # fallback a la relación construida desde el vector normalizado
-                        autovectores_relaciones_text.append(autovectores_relaciones_text_norm[len(autovectores_relaciones_text)])
-            except Exception:
-                # si algo falla, usar el fallback completo
-                autovectores_relaciones_text = autovectores_relaciones_text_norm
+            # La relación textual se deriva del autovector normalizado.
+            autovectores_relaciones_text = [v1_rel, v2_rel]
 
             # Usar los autovectores *normalizados* para construir las expresiones simbólicas
             v1_sym = sp.Matrix([autovectores_normalizados[0]["vx"], autovectores_normalizados[0]["vy"]])
@@ -482,22 +532,56 @@ class Dynamic2DNonHomogeneousService:
             yh_t = sp.simplify(sol_homogenea_vectorial[1])
             sol_homogenea_componentes_latex = [sp.latex(sp.Eq(xs(t_sym), xh_t)), sp.latex(sp.Eq(ys(t_sym), yh_t))]
 
-            # 2. Solución Particular (punto de equilibrio)
-            Xp = np.zeros(2)
-            if equilibrio_pnto:
-                Xp = np.array([equilibrio_pnto['x'], equilibrio_pnto['y']])
-            # Mostrar la solución particular redondeada a 0 decimales para presentación
-            sol_particular_latex = [f"X_p = \\begin{{pmatrix}} {Xp[0]:.0f} \\\\ {Xp[1]:.0f} \\end{{pmatrix}}"]
+            # 2. Solución Particular
+            if forcing_is_time_varying and abs(b) < 1e-12 and abs(c) < 1e-12:
+                # Caso diagonal: resolver componente por componente con factor integrante.
+                def trig_particular(forcing_expr, coeff):
+                    forcing_expanded = sp.expand_trig(sp.expand(forcing_expr))
+                    if not forcing_expanded.has(sp.sin(t_sym)) and not forcing_expanded.has(sp.cos(t_sym)):
+                        raw = sp.simplify(sp.exp(coeff * t_sym) * sp.integrate(sp.exp(-coeff * t_sym) * forcing_expanded, t_sym))
+                        return sp.expand_trig(raw)
+
+                    u, v = sp.symbols('u v')
+                    trial = u * sp.cos(t_sym) + v * sp.sin(t_sym)
+                    equation = sp.expand(sp.diff(trial, t_sym) - coeff * trial - forcing_expanded)
+                    equation = sp.expand_trig(equation)
+                    cos_coeff = sp.expand(equation).coeff(sp.cos(t_sym))
+                    sin_coeff = sp.expand(equation).coeff(sp.sin(t_sym))
+                    solution = sp.solve([sp.Eq(cos_coeff, 0), sp.Eq(sin_coeff, 0)], [u, v], dict=True)
+                    if solution:
+                        sol = solution[0]
+                        return sp.expand_trig(sol[u] * sp.cos(t_sym) + sol[v] * sp.sin(t_sym))
+
+                    raw = sp.simplify(sp.exp(coeff * t_sym) * sp.integrate(sp.exp(-coeff * t_sym) * forcing_expanded, t_sym))
+                    return sp.expand_trig(raw)
+
+                x_p_t = trig_particular(e_expr, a)
+                y_p_t = trig_particular(f_expr, d)
+                Xp_sym = sp.Matrix([x_p_t, y_p_t])
+                sol_particular_latex = [f"X_p(t) = {sp.latex(Xp_sym)}"]
+                Xp = np.array([0.0, 0.0], dtype=float)
+            else:
+                Xp = np.zeros(2)
+                if equilibrio_pnto:
+                    Xp = np.array([equilibrio_pnto['x'], equilibrio_pnto['y']])
+                # Mostrar la solución particular redondeada a 0 decimales para presentación
+                sol_particular_latex = [f"X_p = \\begin{{pmatrix}} {Xp[0]:.0f} \\\\ {Xp[1]:.0f} \\end{{pmatrix}}"]
 
             # 3. No calculamos numéricamente C1, C2: los dejamos simbólicos
             constantes = {"c1": "C1", "c2": "C2"}
 
             # 4. Solución general vectorial simbólica: mostrar primero la parte homogénea sin multiplicar
-            Xp_sym = sp.Matrix(Xp)
-            sol_general_vectorial_unmultiplied_latex = f"X(t) = {sp.latex(scalar1)} {vec1_latex} + {sp.latex(scalar2)} {vec2_latex} + {sp.latex(Xp_sym)}"
+            if forcing_is_time_varying and abs(b) < 1e-12 and abs(c) < 1e-12:
+                sol_general_vectorial_unmultiplied_latex = f"X(t) = {sp.latex(scalar1)} {vec1_latex} + {sp.latex(scalar2)} {vec2_latex} + {sp.latex(Xp_sym)}"
+            else:
+                Xp_sym = sp.Matrix(Xp)
+                sol_general_vectorial_unmultiplied_latex = f"X(t) = {sp.latex(scalar1)} {vec1_latex} + {sp.latex(scalar2)} {vec2_latex} + {sp.latex(Xp_sym)}"
 
             # 5. Solución general multiplicada y simplificada (componentes explícitas)
-            sol_general_vectorial = sol_homogenea_vectorial + Xp_sym
+            if forcing_is_time_varying and abs(b) < 1e-12 and abs(c) < 1e-12:
+                sol_general_vectorial = sol_homogenea_vectorial + Xp_sym
+            else:
+                sol_general_vectorial = sol_homogenea_vectorial + Xp_sym
             sol_general_vectorial_latex = f"X(t) = {sp.latex(sol_general_vectorial)}"
 
             x_t = sp.simplify(sol_general_vectorial[0])
@@ -529,7 +613,7 @@ class Dynamic2DNonHomogeneousService:
 
         return {
             "matrix_a": [[a, b], [c, d]],
-            "vector_b": [e, f],
+            "vector_b": [e_raw, f_raw],
             "traza": traza,
             "determinante": det_A,
             "clasificacion_homogenea": clasificacion,

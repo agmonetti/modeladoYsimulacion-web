@@ -12,8 +12,8 @@ class Dynamic2DNonHomogeneousRequest(BaseModel):
     b: Optional[float] = -1.0
     c: Optional[float] = -9.0
     d: Optional[float] = 0.0
-    e: Optional[float] = 1.0
-    f: Optional[float] = 9.0
+    e: Optional[Any] = 1.0
+    f: Optional[Any] = 9.0
     x0: Optional[float] = 2.0
     y0: Optional[float] = 2.0
     t0: Optional[float] = 0.0
