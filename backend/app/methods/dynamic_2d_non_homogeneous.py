@@ -253,11 +253,9 @@ class Dynamic2DNonHomogeneousService:
             except Exception:
                 v2_nums = [0, 1]
 
-            # Crear vectores simbólicos enteros simples para la solución homogénea
-            v1_sym = sp.Matrix(v1_nums)
-            v2_sym = sp.Matrix(v2_nums)
-
-            list_autovectores = [
+            # Mantener la versión simplificada numérica (temporal), se reemplazará
+            # por la versión normalizada más abajo para la salida y las soluciones.
+            temp_autovectores = [
                 {"vx": int(v1_nums[0]), "vy": int(v1_nums[1])},
                 {"vx": int(v2_nums[0]), "vy": int(v2_nums[1])}
             ]
@@ -330,15 +328,13 @@ class Dynamic2DNonHomogeneousService:
                 a, b = nums[0], nums[1]
                 if a != 0:
                     frac = Fraction(b, a)
-                    # representación racional simplificada
-                    if frac.denominator == 1:
-                        vy_repr = str(frac.numerator)
-                    else:
-                        vy_repr = f"{frac.numerator}/{frac.denominator}"
-                    norm = [1, float(frac)]
-                    # relación k2 = frac * k1  (o -3 k1 = k2)
-                    relacion = f"k_2 = {sp.latex(sp.Rational(frac.numerator, frac.denominator))} k_1"
-                    vector_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}1\\{vy_repr}\\end{{pmatrix}}"
+                    # convertir a float y redondear a entero para presentación
+                    vy_float = float(frac)
+                    vy_rounded = int(round(vy_float))
+                    norm = [1, vy_rounded]
+                    # relación k2 = vy_rounded * k1
+                    relacion = f"k_2 = {vy_rounded} k_1"
+                    vector_param = f"\\mathbf{{v}} = k \\begin{{pmatrix}}1\\{vy_rounded}\\end{{pmatrix}}"
                 else:
                     # si a == 0, elegimos segunda componente = 1
                     norm = [0, 1]
@@ -355,6 +351,30 @@ class Dynamic2DNonHomogeneousService:
             autovectores_relaciones_latex.append(v2_rel)
             autovectores_parametricos_latex.append(v1_param)
             autovectores_parametricos_latex.append(v2_param)
+
+            # Reemplazar relaciones en texto plano por las basadas en los valores normalizados (enteros)
+            autovectores_relaciones_text = []
+            for v in autovectores_normalizados:
+                vxn = v['vx']
+                vyn = v['vy']
+                if vxn == 1:
+                    autovectores_relaciones_text.append(f"k2 = {vyn} k1")
+                elif vxn == 0:
+                    autovectores_relaciones_text.append("k1 = 0")
+                else:
+                    # fallback: show ratio
+                    ratio = Fraction(vyn, vxn)
+                    if ratio.denominator == 1:
+                        autovectores_relaciones_text.append(f"k2 = {ratio.numerator}/{ratio.denominator} k1")
+                    else:
+                        autovectores_relaciones_text.append(f"k2 = {float(ratio)} k1")
+
+            # Usar los autovectores *normalizados* para construir las expresiones simbólicas
+            v1_sym = sp.Matrix([autovectores_normalizados[0]["vx"], autovectores_normalizados[0]["vy"]])
+            v2_sym = sp.Matrix([autovectores_normalizados[1]["vx"], autovectores_normalizados[1]["vy"]])
+
+            # Actualizar la lista de autovectores de salida a las versiones normalizadas
+            list_autovectores = autovectores_normalizados
 
             # Solución homogénea: forma con autovectores sin multiplicar (C1 e^{λ1 t} v1 + C2 e^{λ2 t} v2)
             scalar1 = sp.simplify(C1 * sp.exp(lambda1_sym * t_sym))
