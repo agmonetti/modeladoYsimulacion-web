@@ -188,7 +188,7 @@ export default function Dynamic2DNonHomogeneous() {
                   ))}
                   {/* Mostrar sólo la versión normalizada (la más sencilla) y formateada */}
                   {resultado.autovectores_normalizados && resultado.autovectores_normalizados.map((v, idx) => (
-                    <div key={`norm-${idx}`} className="validation-row"><span>v_{idx+1} (normalizado):</span> <span>[{formatComp(v.vx as number)}, {formatComp(v.vy as number)}]</span></div>
+                    <div key={`norm-${idx}`} className="validation-row"><span>v_{idx+1}:</span> <span>[{formatComp(v.vx as number)}, {formatComp(v.vy as number)}]</span></div>
                   ))}
                   {resultado.autovectores_relaciones_text && resultado.autovectores_relaciones_text.map((rel, idx) => (
                     <div key={`reltext-${idx}`} className="validation-row" style={{marginTop: '0.25rem'}}><span>Relación (sin valores):</span> <span>{rel}</span></div>

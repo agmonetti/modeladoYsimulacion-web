@@ -263,7 +263,8 @@ class Dynamic2DNonHomogeneousService:
             # Generar pasos simbólicos para despejar la relación entre componentes del autovector
             k1_sym, k2_sym = sp.symbols('k_1 k_2')
             autovectores_pasos_latex = []
-            autovectores_relaciones_text = []
+            # guardamos la relación simbólica (texto) si SymPy la puede producir
+            autovectores_relaciones_text_sym = []
             eigen_syms = [lambda1_sym]
             if len(evects) > 1:
                 eigen_syms.append(lambda2_sym)
@@ -315,7 +316,7 @@ class Dynamic2DNonHomogeneousService:
                     rel_text = f"{lhs} = {rhs_text}"
                 except Exception:
                     rel_text = str(rel).replace('k_1', 'k1').replace('k_2', 'k2')
-                autovectores_relaciones_text.append(rel_text)
+                    autovectores_relaciones_text_sym.append(rel_text)
 
             # Normalizar preferentemente para tener primera componente = 1 cuando sea posible
             from fractions import Fraction
@@ -352,22 +353,30 @@ class Dynamic2DNonHomogeneousService:
             autovectores_parametricos_latex.append(v1_param)
             autovectores_parametricos_latex.append(v2_param)
 
-            # Reemplazar relaciones en texto plano por las basadas en los valores normalizados (enteros)
-            autovectores_relaciones_text = []
+            # Construir relaciones a partir de los autovectores normalizados (enteros)
+            autovectores_relaciones_text_norm = []
             for v in autovectores_normalizados:
                 vxn = v['vx']
                 vyn = v['vy']
                 if vxn == 1:
-                    autovectores_relaciones_text.append(f"k2 = {vyn} k1")
+                    autovectores_relaciones_text_norm.append(f"k2 = {vyn} k1")
                 elif vxn == 0:
-                    autovectores_relaciones_text.append("k1 = 0")
+                    autovectores_relaciones_text_norm.append("k1 = 0")
                 else:
-                    # fallback: show ratio
                     ratio = Fraction(vyn, vxn)
                     if ratio.denominator == 1:
-                        autovectores_relaciones_text.append(f"k2 = {ratio.numerator}/{ratio.denominator} k1")
+                        autovectores_relaciones_text_norm.append(f"k2 = {ratio.numerator} k1")
                     else:
-                        autovectores_relaciones_text.append(f"k2 = {float(ratio)} k1")
+                        autovectores_relaciones_text_norm.append(f"k2 = {ratio.numerator}/{ratio.denominator} k1")
+
+            # Preferir la relación simbólica si SymPy la calculó (coincide mejor con el método algebraico)
+            try:
+                if len(autovectores_relaciones_text_sym) == len(autovectores_normalizados) and len(autovectores_relaciones_text_sym) > 0:
+                    autovectores_relaciones_text = autovectores_relaciones_text_sym
+                else:
+                    autovectores_relaciones_text = autovectores_relaciones_text_norm
+            except NameError:
+                autovectores_relaciones_text = autovectores_relaciones_text_norm
 
             # Usar los autovectores *normalizados* para construir las expresiones simbólicas
             v1_sym = sp.Matrix([autovectores_normalizados[0]["vx"], autovectores_normalizados[0]["vy"]])
@@ -396,7 +405,8 @@ class Dynamic2DNonHomogeneousService:
             Xp = np.zeros(2)
             if equilibrio_pnto:
                 Xp = np.array([equilibrio_pnto['x'], equilibrio_pnto['y']])
-            sol_particular_latex = [f"X_p = \\begin{{pmatrix}} {Xp[0]:.4f} \\\\ {Xp[1]:.4f} \\end{{pmatrix}}"]
+            # Mostrar la solución particular redondeada a 0 decimales para presentación
+            sol_particular_latex = [f"X_p = \\begin{{pmatrix}} {Xp[0]:.0f} \\\\ {Xp[1]:.0f} \\end{{pmatrix}}"]
 
             # 3. No calculamos numéricamente C1, C2: los dejamos simbólicos
             constantes = {"c1": "C1", "c2": "C2"}
