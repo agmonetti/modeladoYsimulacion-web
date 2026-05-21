@@ -91,18 +91,9 @@ pytest
 
 ## To DO
 
-- ejercicio 4, discrepancias script - manual
-- ejercicio 5, lo resolvi con apartado 'personalizado'con estos parametros: . tambien cualquier cosa.{
-Dominio x (min):-4
-Dominio x (max):4
-Rango del parametro (min):-4
-Rango del parametro (max): 4
-Valores para diagrama de fase: -3,0,3
-}
-- ejercicio 7, parece bien, pero exploto el analisis de estabilidad
-- ejercicoi 8 parece bien
-
--general : algunos ejercicios en apartado ' personalizado ', pueden no justificar los diagramas de fase.
+- revisar sistemas 2d, diagramas de fase, casos de que vector f sean t.
+- revisar sistemas dinamicos 1d, no hay consistencia.
+- revisar casos personalizados de las bifurcaciones.
 
 - ~mejorar el apartado de 'Analisis de estabilidad'~
 - ~el analisis avanzado de geogebra deberia mostrar justamente debajo de dicho boton como fluctua el grafico para una mejor comprension.~
