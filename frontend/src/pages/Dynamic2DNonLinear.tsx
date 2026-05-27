@@ -232,6 +232,10 @@ export default function Dynamic2DNonLinear() {
                         <span>{pto.determinante.toFixed(4)}</span>
                       </div>
                       <div className="validation-row">
+                        <span className="validation-label">Discriminante (τ² - 4Δ):</span>
+                        <span>{pto.discriminante.toFixed(4)}</span>
+                      </div>
+                      <div className="validation-row">
                         <span className="validation-label">Clasificación Lineal:</span>
                         <span style={{ fontWeight: 'bold', color: pto.clasificacion.includes('estable') ? '#059669' : '#dc2626' }}>{pto.clasificacion}</span>
                       </div>
