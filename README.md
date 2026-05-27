@@ -95,6 +95,18 @@ pytest
 - revisar sistemas dinamicos 1d, no hay consistencia.
 - revisar casos personalizados de las bifurcaciones.
 
+
+
+
+1. Evaluación de expresiones arbitrarias sin sandbox: el backend compila strings con SymPy (sympify/parse_expr) y el frontend usa new Function. Esto abre la puerta a inyección/ejecución de código en el navegador y a expresiones maliciosas o extremadamente costosas en el servidor. Es el riesgo más serio porque afecta seguridad y estabilidad.
+2. Sin límites de recursos ni protección ante abuso: parámetros como N, M, n, steps o tamaños de intervalos no tienen tope real. Un request grande puede bloquear CPU/RAM (Monte Carlo, EDO, bifurcaciones, mallas), dejando la API inoperable.
+3. API expuesta sin control (CORS *, sin auth ni rate limiting): correcta para laboratorio local, pero muy frágil si se publica. Cualquier cliente puede consumir recursos y extraer datos.
+4. Duplicación de lógica crítica en frontend: parseMathExpr, formatToLatex, createJsFunc se repiten en muchas páginas, y hay dos clientes HTTP (api.ts y api/client.js). Esto aumenta el riesgo de inconsistencias y bugs divergentes.
+5. Tipado y contratos débiles: TypeScript estricto convive con muchos any, stores en JS y sin validación de respuestas. Falta un contrato API compartido (DTOs), lo que hace frágil el refactor.
+6. Manejo de errores poco estructurado: el backend captura Exception genérico y devuelve 400 con str(e). Falta clasificación de errores, códigos estables y trazabilidad útil.
+7. Cobertura de tests incompleta: hay buen set de tests en backend, pero no hay tests de frontend ni automatización de calidad (lint/CI) visibles en el repo.
+8. Deuda de limpieza y coherencia: archivos y rutas duplicadas o residuales (por ej. main.jsx, api/client.js, public vacío) generan confusión y aumentan el costo de mantenimiento.
+
 - ~mejorar el apartado de 'Analisis de estabilidad'~
 - ~el analisis avanzado de geogebra deberia mostrar justamente debajo de dicho boton como fluctua el grafico para una mejor comprension.~
 
