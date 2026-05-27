@@ -56,13 +56,16 @@ export const monteCarloService = {
   estadistico: (data: any) => api.post('/monte-carlo/estadistico-1d', data),
 }
 
-// NUEVO SERVICIO AÑADIDO ACÁ (CORREGIDO)
 export const dynamic2DLinearService = {
   solve: (data: any) => api.post('/dynamic-2d-linear/solve', data),
 }
 
 export const dynamic2DNonHomogeneousService = {
   solve: (data: any) => api.post('/dynamic-2d-non-homogeneous/solve', data),
+}
+
+export const dynamic2DNonLinearService = {
+  solve: (data: any) => api.post('/dynamic-2d-nonlinear/solve', data),
 }
 
 export default api

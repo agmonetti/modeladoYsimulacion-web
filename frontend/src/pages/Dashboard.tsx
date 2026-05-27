@@ -66,6 +66,12 @@ export default function Dashboard() {
           <small>Solución general, particular y homogénea</small>
         </div>
 
+        <div className="method-card" onClick={() => navigate('/dynamic-2d-nonlinear')}>
+          <h3>Sistemas Dinamicos 2D No Lineales</h3>
+          <p>Modelos no lineales con multiples equilibrios</p>
+          <small>Matriz Jacobiana, linealización, ciclos limite</small>
+        </div>
+
         <div className="method-card" onClick={() => navigate('/bifurcations-1d')}>
           <h3>Bifurcaciones 1D</h3>
           <p>Silla nodo, pitchfork y transcrita</p>

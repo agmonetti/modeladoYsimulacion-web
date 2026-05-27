@@ -11,6 +11,7 @@ import EDO from './pages/EDO'
 import Dynamic1D from './pages/Dynamic1D'
 import Dynamic2D from './pages/Dynamic2DLinear'
 import Dynamic2DNonHomogeneous from './pages/Dynamic2DNonHomogeneous'
+import Dynamic2DNonLinear from './pages/Dynamic2DNonLinear'
 import Bifurcations1D from './pages/Bifurcations1D'
 import './App.css'
 
@@ -64,6 +65,7 @@ function App() {
           <li><Link to="/dynamic-1d" onClick={closeSidebar}>SD Autonomos 1D</Link></li>
           <li><Link to="/dynamic-2d-linear" onClick={closeSidebar}>SD Lineales 2D</Link></li>
           <li><Link to="/dynamic-2d-non-homogeneous" onClick={closeSidebar}>SD No Homogéneos 2D</Link></li>
+          <li><Link to="/dynamic-2d-nonlinear" onClick={closeSidebar}>SD No Lineales 2D</Link></li>
           <li><Link to="/bifurcations-1d" onClick={closeSidebar}>Bifurcaciones 1D</Link></li>
           
           <li className="section-title">Herramientas</li>
@@ -85,6 +87,7 @@ function App() {
           <Route path="/dynamic-1d" element={<Dynamic1D />} />
           <Route path="/dynamic-2d-linear" element={<Dynamic2D />} />
           <Route path="/dynamic-2d-non-homogeneous" element={<Dynamic2DNonHomogeneous />} />
+          <Route path="/dynamic-2d-nonlinear" element={<Dynamic2DNonLinear />} />
           <Route path="/bifurcations-1d" element={<Bifurcations1D />} />
         </Routes>
       </main>
