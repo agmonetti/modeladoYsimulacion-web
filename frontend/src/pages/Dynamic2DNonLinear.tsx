@@ -16,7 +16,7 @@ type AnalisisPunto = {
   clasificacion: string;
   comportamiento: string;
   autovalores: Autovalor[];
-  jacobiano_local: number[][]; // [row][col]
+  jacobiano_local: number[][];
 };
 
 type SolveResponse = {
@@ -53,7 +53,7 @@ export default function Dynamic2DNonLinear() {
         x0: parseFloat(x0), y0: parseFloat(y0),
         t_fin: parseFloat(tFin), h: parseFloat(hStep),
         x_min: -d, x_max: d, y_min: -d, y_max: d, 
-        cantidad_trayectorias: 25 // Default más denso para el campo
+        cantidad_trayectorias: 25
       };
       const res = await dynamic2DNonLinearService.solve(payload);
       setResultado(res.data);
@@ -68,7 +68,6 @@ export default function Dynamic2DNonLinear() {
     if (!resultado) return null;
     const traces: any[] = [];
 
-    // CAPA 1: Flujo del campo (Detrás) - Trayectorias automáticas RK4
     resultado.automatic_trajectories.forEach((traj, idx) => {
       traces.push({
         x: traj.x, y: traj.y, type: 'scatter', mode: 'lines',
@@ -78,52 +77,35 @@ export default function Dynamic2DNonLinear() {
       });
     });
 
-    // CAPA 2: Nulclinas curvas (En el medio) - Plotly Contour puro (solo lineas de nivel 0)
-    // f(x,y) = 0 (dx/dt = 0)
     traces.push({
-      x: resultado.contour_data.x_axis,
-      y: resultado.contour_data.y_axis,
-      z: resultado.contour_data.z_x_nul,
-      type: 'contour',
-      coloring: 'none', // IMPORTANTE: Sin relleno
+      x: resultado.contour_data.x_axis, y: resultado.contour_data.y_axis, z: resultado.contour_data.z_x_nul,
+      type: 'contour', coloring: 'none',
       contours: { coloring: 'none', showlines: true, start: 0, end: 0 },
       line: { color: '#2563eb', width: 2, dash: 'dash' },
       showscale: false, name: 'Nulclina dx/dt=0', hoverinfo: 'none'
     });
-    // g(x,y) = 0 (dy/dt = 0)
+
     traces.push({
-      x: resultado.contour_data.x_axis,
-      y: resultado.contour_data.y_axis,
-      z: resultado.contour_data.z_y_nul,
-      type: 'contour',
-      coloring: 'none', // IMPORTANTE: Sin relleno
+      x: resultado.contour_data.x_axis, y: resultado.contour_data.y_axis, z: resultado.contour_data.z_y_nul,
+      type: 'contour', coloring: 'none',
       contours: { coloring: 'none', showlines: true, start: 0, end: 0 },
       line: { color: '#d97706', width: 2, dash: 'dash' },
       showscale: false, name: 'Nulclina dy/dt=0', hoverinfo: 'none'
     });
 
-    // CAPA 3: Trayectoria Principal y Marcadores (Enfrente)
-    // Trayectoria Principal
     traces.push({
       x: resultado.principal_trajectory.x, y: resultado.principal_trajectory.y,
-      type: 'scatter', mode: 'lines',
-      line: { color: '#111827', width: 2.5 },
-      name: 'Trayectoria Principal'
+      type: 'scatter', mode: 'lines', line: { color: '#111827', width: 2.5 }, name: 'Trayectoria Principal'
     });
 
-    // Marcador Condición Inicial
     traces.push({
-      x: [parseFloat(x0)], y: [parseFloat(y0)],
-      type: 'scatter', mode: 'markers',
-      marker: { color: '#059669', size: 10, line: { color: '#fff', width: 1.5 } },
-      name: 'Condición Inicial'
+      x: [parseFloat(x0)], y: [parseFloat(y0)], type: 'scatter', mode: 'markers',
+      marker: { color: '#059669', size: 10, line: { color: '#fff', width: 1.5 } }, name: 'Condición Inicial'
     });
 
-    // Puntos de Equilibrio Analizados
     resultado.puntos_analizados.forEach((pto, idx) => {
       traces.push({
-        x: [pto.x], y: [pto.y],
-        type: 'scatter', mode: 'markers',
+        x: [pto.x], y: [pto.y], type: 'scatter', mode: 'markers',
         marker: { color: '#dc2626', size: 12, symbol: 'x', line: { color: '#fff', width: 2 } }, 
         showlegend: idx === 0, name: 'Puntos de Equilibrio (X*)'
       });
@@ -132,13 +114,21 @@ export default function Dynamic2DNonLinear() {
     return traces;
   }, [resultado, x0, y0]);
 
+  const timePlotData = useMemo(() => {
+    if (!resultado) return null;
+    return [
+      { x: resultado.principal_trajectory.t, y: resultado.principal_trajectory.x, type: 'scatter', mode: 'lines', name: 'x(t)', line: { color: '#2563eb' } },
+      { x: resultado.principal_trajectory.t, y: resultado.principal_trajectory.y, type: 'scatter', mode: 'lines', name: 'y(t)', line: { color: '#dc2626' } }
+    ];
+  }, [resultado]);
+
   return (
     <div className="method-page">
       <h1>Sistemas Dinámicos 2D No Lineales</h1>
 
       <div className="theory-section">
         <h3>Análisis Local (Teorema de Hartman-Grobman)</h3>
-        <p>Determinación de estabilidad cualitativa mediante la linealización de la Matriz Jacobiana en vecindades de equilibrios hiperbólicos.</p>
+        <p>Determinación de estabilidad cualitativa mediante la linealización de la Matriz Jacobiana en vecindades de equilibrios aislados.</p>
       </div>
 
       <div className="method-container">
@@ -153,7 +143,7 @@ export default function Dynamic2DNonLinear() {
               <label>dy/dt = g(x,y)</label>
               <input type="text" value={eqY} onChange={e => setEqY(e.target.value)} placeholder="Ej: x^2 + y^2 - 1" />
             </div>
-            <small style={{ color: '#666', marginTop: '-4px', fontSize: '11px', lineHeight: '1.2' }}>Usa <strong>*</strong> para multiplicar (x*y) y <strong>^</strong> o <strong>**</strong> para potencias (x^2).</small>
+            <small style={{ color: '#666', marginTop: '-4px', fontSize: '11px', lineHeight: '1.2' }}>Usa <strong>*</strong> para multiplicar (x*y) y <strong>^</strong> para potencias (x^2).</small>
           </div>
 
           <h3 style={{ marginTop: '16px' }}>Condiciones Iniciales</h3>
@@ -175,7 +165,7 @@ export default function Dynamic2DNonLinear() {
         </div>
 
         <div className="result-section">
-          <h2>Análisis Local y Espectral (Hartman-Grobman)</h2>
+          <h2>Análisis Local y Espectral</h2>
           {error && <div className="error-box">{error}</div>}
 
           {resultado && (
@@ -196,66 +186,75 @@ export default function Dynamic2DNonLinear() {
                 </div>
               </div>
 
-              {/* Analisis por cada punto encontrado */}
-              {resultado.puntos_analizados.length === 0 ? (
-                <div className="result-box">
-                  <div className="validation-title">Puntos de Equilibrio Detectados</div>
-                  <div className="validation-box">
-                    <span style={{ color: '#dc2626', fontWeight: 'bold' }}>No se encontraron puntos de equilibrio reales analíticamente en el sistema configurado.</span>
-                  </div>
-                </div>
-              ) : (
-                resultado.puntos_analizados.map((pto, idx) => (
-                  <div key={idx} className="result-box" style={{ borderColor: '#818cf8', borderWidth: '2px' }}>
-                    <div className="validation-title" style={{ background: '#e0e7ff', color: '#3730a3', borderBottom: '1px solid #c7d2fe', fontWeight: 'bold' }}>
-                      Análisis Cualitativo Punto X*_{idx + 1}: ({pto.x.toFixed(4)}, {pto.y.toFixed(4)})
+              {/* NUEVA SECCIÓN: Listado de Puntos Encontrados vía Nulclinas */}
+              <div className="result-box">
+                <div className="validation-title">Puntos de Equilibrio Encontrados (f(x,y) = 0 ∩ g(x,y) = 0)</div>
+                <div className="validation-box">
+                  {resultado.puntos_analizados.length === 0 ? (
+                    <div className="validation-row">
+                      <span style={{ color: '#dc2626', fontWeight: 'bold' }}>No se interceptan las nulclinas en el plano real.</span>
                     </div>
-                    <div className="validation-box">
-                      {/* Representación Matricial Visual del Jacobiano Local Evaluado */}
-                      <div className="validation-row" style={{ alignItems: 'center', marginBottom: '8px' }}>
-                        <span className="validation-label">J local (linealizado):</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'monospace', fontSize: '15px', color: '#111827' }}>
-                          <span style={{ fontWeight: 'bold' }}>J(x*,y*) =</span>
-                          <div style={{ borderLeft: '2px solid #111827', borderRight: '2px solid #111827', padding: '0 10px', textAlign: 'center', lineHeight: '1.4' }}>
-                            <div>{pto.jacobiano_local[0][0].toFixed(2)} &nbsp;&nbsp; {pto.jacobiano_local[0][1].toFixed(2)}</div>
-                            <div>{pto.jacobiano_local[1][0].toFixed(2)} &nbsp;&nbsp; {pto.jacobiano_local[1][1].toFixed(2)}</div>
-                          </div>
+                  ) : (
+                    resultado.puntos_analizados.map((pto, idx) => (
+                      <div key={`summary-${idx}`} className="validation-row" style={{ fontFamily: 'monospace', fontSize: '14px' }}>
+                        <span className="validation-label">Punto P_{idx + 1}^*:</span>
+                        <span>x* = {pto.x.toFixed(4)}, &nbsp; y* = {pto.y.toFixed(4)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Bloques de Análisis Cualitativo Individual por Punto */}
+              {resultado.puntos_analizados.map((pto, idx) => (
+                <div key={idx} className="result-box" style={{ borderColor: '#818cf8', borderWidth: '2px' }}>
+                  <div className="validation-title" style={{ background: '#e0e7ff', color: '#3730a3', borderBottom: '1px solid #c7d2fe', fontWeight: 'bold' }}>
+                    Análisis Cualitativo Local en P_{idx + 1}^*: ({pto.x.toFixed(4)}, {pto.y.toFixed(4)})
+                  </div>
+                  <div className="validation-box">
+                    <div className="validation-row" style={{ alignItems: 'center', marginBottom: '8px' }}>
+                      <span className="validation-label">J local evaluado:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'monospace', fontSize: '15px', color: '#111827' }}>
+                        <span style={{ fontWeight: 'bold' }}>J =</span>
+                        <div style={{ borderLeft: '2px solid #111827', borderRight: '2px solid #111827', padding: '0 10px', textAlign: 'center', lineHeight: '1.4' }}>
+                          <div>{pto.jacobiano_local[0][0].toFixed(2)} &nbsp;&nbsp; {pto.jacobiano_local[0][1].toFixed(2)}</div>
+                          <div>{pto.jacobiano_local[1][0].toFixed(2)} &nbsp;&nbsp; {pto.jacobiano_local[1][1].toFixed(2)}</div>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="validation-row">
-                        <span className="validation-label">Traza (τ):</span>
-                        <span>{pto.traza.toFixed(4)}</span>
-                      </div>
-                      <div className="validation-row">
-                        <span className="validation-label">Determinante (Δ):</span>
-                        <span>{pto.determinante.toFixed(4)}</span>
-                      </div>
-                      <div className="validation-row">
-                        <span className="validation-label">Discriminante (τ² - 4Δ):</span>
-                        <span>{pto.discriminante.toFixed(4)}</span>
-                      </div>
-                      <div className="validation-row">
-                        <span className="validation-label">Clasificación Lineal:</span>
-                        <span style={{ fontWeight: 'bold', color: pto.clasificacion.includes('estable') ? '#059669' : '#dc2626' }}>{pto.clasificacion}</span>
-                      </div>
-                      <div className="validation-row">
-                        <span className="validation-label">Conclusión:</span>
-                        <span>Localmente en la vecindad de este equilibrio hiperbólico, el sistema presenta un comportamiento clasificado como {pto.clasificacion}. {pto.comportamiento}</span>
-                      </div>
-                      <div className="validation-row">
-                        <span className="validation-label">Espectro (λ_{idx+1}):</span>
-                        <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '4px 6px', borderRadius: '4px' }}>
-                          λ_1 = {pto.autovalores[0].real.toFixed(4)} {pto.autovalores[0].imag >= 0 ? `+ ${pto.autovalores[0].imag.toFixed(4)}` : `- ${Math.abs(pto.autovalores[0].imag).toFixed(4)}`}i<br/>
-                          λ_2 = {pto.autovalores[1].real.toFixed(4)} {pto.autovalores[1].imag >= 0 ? `+ ${pto.autovalores[1].imag.toFixed(4)}` : `- ${Math.abs(pto.autovalores[1].imag).toFixed(4)}`}i
-                        </span>
-                      </div>
+                    <div className="validation-row">
+                      <span className="validation-label">Traza (¼):</span>
+                      <span>{pto.traza.toFixed(4)}</span>
+                    </div>
+                    <div className="validation-row">
+                      <span className="validation-label">Determinante (Δ):</span>
+                      <span>{pto.determinante.toFixed(4)}</span>
+                    </div>
+                    <div className="validation-row">
+                      <span className="validation-label">Discriminante (τ² - 4Δ):</span>
+                      <span>{pto.discriminante.toFixed(4)}</span>
+                    </div>
+                    <div className="validation-row">
+                      <span className="validation-label">Clasificación Lineal:</span>
+                      <span style={{ fontWeight: 'bold', color: pto.clasificacion.includes('estable') ? '#059669' : '#dc2626' }}>{pto.clasificacion}</span>
+                    </div>
+                    <div className="validation-row">
+                      <span className="validation-label">Conclusión:</span>
+                      <span>El sistema presenta un equilibrio indexado como {pto.clasificacion}. {pto.comportamiento}</span>
+                    </div>
+                    <div className="validation-row">
+                      <span className="validation-label">Espectro (λ):</span>
+                      <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '4px 6px', borderRadius: '4px' }}>
+                        λ_1 = {pto.autovalores[0].real.toFixed(4)} {pto.autovalores[0].imag >= 0 ? `+ ${pto.autovalores[0].imag.toFixed(4)}` : `- ${Math.abs(pto.autovalores[0].imag).toFixed(4)}`}i<br/>
+                        λ_2 = {pto.autovalores[1].real.toFixed(4)} {pto.autovalores[1].imag >= 0 ? `+ ${pto.autovalores[1].imag.toFixed(4)}` : `- ${Math.abs(pto.autovalores[1].imag).toFixed(4)}`}i
+                      </span>
                     </div>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
 
-              {/* Retrato de Fase Arreglado */}
+              {/* Retrato de Fase */}
               {phasePlotData && (
                 <div style={{ marginBottom: '16px', border: '1px solid #ccc', borderRadius: '4px', overflow: 'hidden' }}>
                   <PlotlyGraph 
@@ -266,6 +265,16 @@ export default function Dynamic2DNonLinear() {
                       yaxis: { title: 'Variable Y', range: [-parseFloat(domain), parseFloat(domain)] },
                       showlegend: true
                     }} 
+                  />
+                </div>
+              )}
+
+              {timePlotData && (
+                <div style={{ marginBottom: '16px', border: '1px solid #ccc', borderRadius: '4px', overflow: 'hidden' }}>
+                  <PlotlyGraph 
+                    data={timePlotData} 
+                    title="Evolución Temporal" 
+                    layout={{ xaxis: { title: 'Tiempo (t)' }, yaxis: { title: 'Estado' } }} 
                   />
                 </div>
               )}

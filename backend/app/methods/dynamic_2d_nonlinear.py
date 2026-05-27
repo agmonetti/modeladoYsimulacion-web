@@ -46,7 +46,7 @@ class Dynamic2DNonLinearService:
         elif "Foco inestable" in clasif:
             comp = "Trayectorias giran en espiral alejandose del equilibrio."
         elif "Centro" in clasif:
-            comp = "Posibles orbitas cerradas (ciclos limite o centros). Se requiere Lyapunov o Poincaré-Bendixson."
+            comp = "Posibles orbitas cerradas (ciclos limite o centros). Se requiere Lyapunov, coordenadas polares ó, la mejor opcion, Ciclos Hamiltonianos."
         else:
             comp = "Requiere analisis topologico de orden superior."
 
