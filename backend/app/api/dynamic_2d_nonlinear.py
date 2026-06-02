@@ -1,15 +1,20 @@
 # backend/app/api/dynamic_2d_nonlinear.py
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
 
 from app.methods.dynamic_2d_nonlinear import Dynamic2DNonLinearService
 
-router = APIRouter(prefix="/api/dynamic-2d-nonlinear", tags=["Sistemas Dinamicos 2D No Lineales"])
+router = APIRouter(
+    prefix="/api/dynamic-2d-nonlinear", tags=["Sistemas Dinamicos 2D No Lineales"]
+)
+
 
 class Dynamic2DNonLinearRequest(BaseModel):
     eq_x: str = "y - x"
     eq_y: str = "x**2 - 1"
+    mu: Optional[float] = 0.0  # Nuevo parametro de bifurcacion
     x0: Optional[float] = 0.5
     y0: Optional[float] = 0.5
     t0: Optional[float] = 0.0
@@ -22,7 +27,8 @@ class Dynamic2DNonLinearRequest(BaseModel):
     cantidad_trayectorias: Optional[int] = 25
 
     class Config:
-        extra = 'allow'
+        extra = "allow"
+
 
 @router.post("/solve")
 def solve_system(req: Dynamic2DNonLinearRequest):
