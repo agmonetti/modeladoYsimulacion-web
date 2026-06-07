@@ -1,75 +1,142 @@
-import { useState } from 'react'
-import { Routes, Route, Link } from 'react-router-dom'
-import Dashboard from './pages/Dashboard'
-import RootFinding from './pages/RootFinding'
-import Differentiation from './pages/Differentiation'
-import Integration from './pages/Integration'
-import Interpolation from './pages/Interpolation'
-import MonteCarlo from './pages/MonteCarlo'
-import Comparator from './pages/Comparator'
-import EDO from './pages/EDO'
-import Dynamic1D from './pages/Dynamic1D'
-import Dynamic2D from './pages/Dynamic2DLinear'
-import Dynamic2DNonHomogeneous from './pages/Dynamic2DNonHomogeneous'
-import Dynamic2DNonLinear from './pages/Dynamic2DNonLinear'
-import Bifurcations1D from './pages/Bifurcations1D'
-import './App.css'
+import { useState } from "react";
+import { Routes, Route, Link } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import RootFinding from "./pages/RootFinding";
+import Differentiation from "./pages/Differentiation";
+import Integration from "./pages/Integration";
+import Interpolation from "./pages/Interpolation";
+import MonteCarlo from "./pages/MonteCarlo";
+import Comparator from "./pages/Comparator";
+import EDO from "./pages/EDO";
+import DynamicGeneral from "./pages/DynamicGeneral";
+import Dynamic1D from "./pages/Dynamic1D";
+import Dynamic2D from "./pages/Dynamic2DLinear";
+import Dynamic2DNonHomogeneous from "./pages/Dynamic2DNonHomogeneous";
+import Dynamic2DNonLinear from "./pages/Dynamic2DNonLinear";
+import Dynamic2DConservative from "./pages/Dynamic2DConservative";
+
+import Bifurcations1D from "./pages/Bifurcations1D";
+import "./App.css";
 
 function App() {
   // Estado para controlar la barra lateral en mobile
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
-  const closeSidebar = () => setIsSidebarOpen(false)
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
     <div className="app-container">
       {/* Botón de Menú para Mobile (Oculto en PC) */}
       <div className="mobile-header">
         <button className="menu-btn" onClick={toggleSidebar}>
-          <span style={{ fontWeight: 'bold' }}>⊞ Menú</span>
+          <span style={{ fontWeight: "bold" }}>⊞ Menú</span>
         </button>
         <span className="mobile-title">Métodos Numéricos</span>
       </div>
 
       {/* Sombra de fondo cuando el menú está abierto en mobile */}
-      {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
+      {isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={closeSidebar}></div>
+      )}
 
-      <nav className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      <nav className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
         <div className="logo">
           <h2>Metodos Numericos</h2>
         </div>
-        
+
         {/* Agregamos el closeSidebar a cada link para que se cierre al elegir un método */}
         <ul className="nav-menu">
-          <li><Link to="/" onClick={closeSidebar}>Inicio</Link></li>
+          <li>
+            <Link to="/" onClick={closeSidebar}>
+              Inicio
+            </Link>
+          </li>
           <li className="section-title">Raices</li>
-          <li><Link to="/root-finding" onClick={closeSidebar}>Biseccion / Newton-Raphson</Link></li>
-          
+          <li>
+            <Link to="/root-finding" onClick={closeSidebar}>
+              Biseccion / Newton-Raphson
+            </Link>
+          </li>
+
           <li className="section-title">Derivacion</li>
-          <li><Link to="/differentiation" onClick={closeSidebar}>Diferencias Finitas</Link></li>
-          
+          <li>
+            <Link to="/differentiation" onClick={closeSidebar}>
+              Diferencias Finitas
+            </Link>
+          </li>
+
           <li className="section-title">Integracion</li>
-          <li><Link to="/integration" onClick={closeSidebar}>Simpson / Trapecio</Link></li>
-          
+          <li>
+            <Link to="/integration" onClick={closeSidebar}>
+              Simpson / Trapecio
+            </Link>
+          </li>
+
           <li className="section-title">Interpolacion</li>
-          <li><Link to="/interpolation" onClick={closeSidebar}>Lagrange</Link></li>
-          
+          <li>
+            <Link to="/interpolation" onClick={closeSidebar}>
+              Lagrange
+            </Link>
+          </li>
+
           <li className="section-title">Monte Carlo</li>
-          <li><Link to="/monte-carlo" onClick={closeSidebar}>Simulacion</Link></li>
+          <li>
+            <Link to="/monte-carlo" onClick={closeSidebar}>
+              Simulacion
+            </Link>
+          </li>
 
           <li className="section-title">Ecuaciones Diferenciales</li>
-          <li><Link to="/edo" onClick={closeSidebar}>Euler / Heun / RK4</Link></li>
-          
+          <li>
+            <Link to="/edo" onClick={closeSidebar}>
+              Euler / Heun / RK4
+            </Link>
+          </li>
+
           <li className="section-title">Sistemas Dinamicos</li>
-          <li><Link to="/dynamic-1d" onClick={closeSidebar}>SD Autonomos 1D</Link></li>
-          <li><Link to="/dynamic-2d-linear" onClick={closeSidebar}>SD Lineales 2D</Link></li>
-          <li><Link to="/dynamic-2d-non-homogeneous" onClick={closeSidebar}>SD No Homogéneos 2D</Link></li>
-          <li><Link to="/dynamic-2d-nonlinear" onClick={closeSidebar}>SD No Lineales 2D</Link></li>
-          <li><Link to="/bifurcations-1d" onClick={closeSidebar}>Bifurcaciones 1D</Link></li>
-          
+          <li>
+            <Link to="/dynamic-general" onClick={closeSidebar}>
+              SD General
+            </Link>
+          </li>
+          <li>
+            <Link to="/dynamic-1d" onClick={closeSidebar}>
+              SD Autonomos 1D
+            </Link>
+          </li>
+          <li>
+            <Link to="/dynamic-2d-linear" onClick={closeSidebar}>
+              SD Lineales 2D
+            </Link>
+          </li>
+          <li>
+            <Link to="/dynamic-2d-non-homogeneous" onClick={closeSidebar}>
+              SD No Homogéneos 2D
+            </Link>
+          </li>
+          <li>
+            <Link to="/dynamic-2d-nonlinear" onClick={closeSidebar}>
+              SD No Lineales 2D
+            </Link>
+          </li>
+          <li>
+            <Link to="/bifurcations-1d" onClick={closeSidebar}>
+              Bifurcaciones 1D
+            </Link>
+          </li>
+          <li>
+            <Link to="/dynamic-2d-conservative" onClick={closeSidebar}>
+              Sistemas Conservativos
+            </Link>
+          </li>
+
           <li className="section-title">Herramientas</li>
-          <li><Link to="/comparator" onClick={closeSidebar}>Comparador</Link></li>
+          <li>
+            <Link to="/comparator" onClick={closeSidebar}>
+              Comparador
+            </Link>
+          </li>
         </ul>
       </nav>
 
@@ -84,15 +151,26 @@ function App() {
           <Route path="/comparator" element={<Comparator />} />
           {/* Agregamos la ruta para EDOs */}
           <Route path="/edo" element={<EDO />} />
+          <Route path="/dynamic-general" element={<DynamicGeneral />} />
           <Route path="/dynamic-1d" element={<Dynamic1D />} />
           <Route path="/dynamic-2d-linear" element={<Dynamic2D />} />
-          <Route path="/dynamic-2d-non-homogeneous" element={<Dynamic2DNonHomogeneous />} />
-          <Route path="/dynamic-2d-nonlinear" element={<Dynamic2DNonLinear />} />
+          <Route
+            path="/dynamic-2d-non-homogeneous"
+            element={<Dynamic2DNonHomogeneous />}
+          />
+          <Route
+            path="/dynamic-2d-nonlinear"
+            element={<Dynamic2DNonLinear />}
+          />
           <Route path="/bifurcations-1d" element={<Bifurcations1D />} />
+          <Route
+            path="/dynamic-2d-conservative"
+            element={<Dynamic2DConservative />}
+          />
         </Routes>
       </main>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

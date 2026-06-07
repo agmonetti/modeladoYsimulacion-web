@@ -15,6 +15,7 @@ class Dynamic2DNonLinearRequest(BaseModel):
     eq_x: str = "y - x"
     eq_y: str = "x**2 - 1"
     mu: Optional[float] = 0.0  # Nuevo parametro de bifurcacion
+    params: Optional[Dict[str, float]] = None
     x0: Optional[float] = 0.5
     y0: Optional[float] = 0.5
     t0: Optional[float] = 0.0

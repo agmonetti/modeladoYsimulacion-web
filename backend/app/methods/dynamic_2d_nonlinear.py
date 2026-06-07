@@ -63,7 +63,9 @@ class Dynamic2DNonLinearService:
     def solve(payload: Dict[str, Any]) -> Dict[str, Any]:
         eq_x_str = payload.get("eq_x", "y - x")
         eq_y_str = payload.get("eq_y", "x**2 - 1")
-        mu_val = float(payload.get("mu", 0.0))
+        params = payload.get("params", {}) or {}
+        params = {str(k): float(v) for k, v in params.items()}
+        mu_val = float(params.pop("mu", payload.get("mu", 0.0)))
         x0 = float(payload.get("x0", 0.5))
         y0 = float(payload.get("y0", 0.5))
         t0 = float(payload.get("t0", 0.0))
@@ -76,24 +78,32 @@ class Dynamic2DNonLinearService:
         cantidad_trayectorias = int(payload.get("cantidad_trayectorias", 25))
 
         x, y, mu_sym = sp.symbols("x y mu", real=True)
+        param_symbols = {name: sp.Symbol(name, real=True) for name in params.keys()}
         transformations = standard_transformations + (
             implicit_multiplication_application,
         )
 
         try:
+            local_dict = {"x": x, "y": y, "mu": mu_sym, **param_symbols}
             f_raw = parse_expr(
                 eq_x_str.replace("^", "**"),
-                local_dict={"x": x, "y": y, "mu": mu_sym},
+                local_dict=local_dict,
                 transformations=transformations,
             )
             g_raw = parse_expr(
                 eq_y_str.replace("^", "**"),
-                local_dict={"x": x, "y": y, "mu": mu_sym},
+                local_dict=local_dict,
                 transformations=transformations,
             )
 
-            f = f_raw.subs(mu_sym, mu_val)
-            g = g_raw.subs(mu_sym, mu_val)
+            subs_map = {mu_sym: mu_val, **{param_symbols[k]: v for k, v in params.items()}}
+            f = f_raw.subs(subs_map)
+            g = g_raw.subs(subs_map)
+
+            free_symbols = {str(sym) for sym in f.free_symbols.union(g.free_symbols)}
+            missing = sorted(sym for sym in free_symbols if sym not in {"x", "y"})
+            if missing:
+                raise ValueError(f"Faltan parametros: {', '.join(missing)}")
         except Exception as e:
             raise ValueError(f"Error de sintaxis en las ecuaciones: {str(e)}")
 

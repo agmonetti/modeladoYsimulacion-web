@@ -1,71 +1,79 @@
-import axios from 'axios'
+import axios from "axios";
 
 // En Docker: nginx hace proxy_pass a http://backend:8000
 // En local: axios hace requests a http://localhost:8000
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json'
+    "Content-Type": "application/json",
   },
-  timeout: 60000 // Timeout para cálculos numéricos largos
-})
+  timeout: 60000, // Timeout para cálculos numéricos largos
+});
 
 export const rootFindingService = {
-  biseccion: (data: any) => api.post('/root-finding/biseccion', data),
-  puntoFijo: (data: any) => api.post('/root-finding/punto-fijo', data),
-  newtonRaphson: (data: any) => api.post('/root-finding/newton-raphson', data),
-  aitken: (data: any) => api.post('/root-finding/aitken', data),
-  comparar: (data: any) => axios.post('/api/root-finding/comparar', data),
-}
+  biseccion: (data: any) => api.post("/root-finding/biseccion", data),
+  puntoFijo: (data: any) => api.post("/root-finding/punto-fijo", data),
+  newtonRaphson: (data: any) => api.post("/root-finding/newton-raphson", data),
+  aitken: (data: any) => api.post("/root-finding/aitken", data),
+  comparar: (data: any) => axios.post("/api/root-finding/comparar", data),
+};
 
 export const differentiationService = {
-  diferenciasFinitas: (data: any) => api.post('/differentiation/diferencias-finitas', data),
-}
+  diferenciasFinitas: (data: any) =>
+    api.post("/differentiation/diferencias-finitas", data),
+};
 
 export const integrationService = {
-  trapecio: (data: any) => api.post('/integration/trapecio', data),
-  rectangulo: (data: any) => api.post('/integration/rectangulo', data),
-  simpson13: (data: any) => api.post('/integration/simpson-13', data),
-  simpson38: (data: any) => api.post('/integration/simpson-38', data),
-  comparar: (data: any) => axios.post('/api/integration/comparar', data)
-}
+  trapecio: (data: any) => api.post("/integration/trapecio", data),
+  rectangulo: (data: any) => api.post("/integration/rectangulo", data),
+  simpson13: (data: any) => api.post("/integration/simpson-13", data),
+  simpson38: (data: any) => api.post("/integration/simpson-38", data),
+  comparar: (data: any) => axios.post("/api/integration/comparar", data),
+};
 
 export const interpolationService = {
-  lagrange: (data: any) => api.post('/interpolation/lagrange', data),
-}
+  lagrange: (data: any) => api.post("/interpolation/lagrange", data),
+};
 
 export const edoService = {
-  resolver: (data: any) => api.post('/ode/resolver', data),
-}
+  resolver: (data: any) => api.post("/ode/resolver", data),
+};
 
 export const dynamic1DService = {
-  solve: (data: any) => api.post('/dynamic-1d/solve', data),
-  equilibria: (data: any) => api.post('/dynamic-1d/equilibria', data),
-  validate: (data: any) => api.post('/dynamic-1d/validate', data),
-  bifurcation: (data: any) => api.post('/dynamic-1d/bifurcation', data),
-}
+  solve: (data: any) => api.post("/dynamic-1d/solve", data),
+  equilibria: (data: any) => api.post("/dynamic-1d/equilibria", data),
+  validate: (data: any) => api.post("/dynamic-1d/validate", data),
+  bifurcation: (data: any) => api.post("/dynamic-1d/bifurcation", data),
+};
 
 export const monteCarloService = {
-  hitOrMiss: (data: any) => api.post('/monte-carlo/hit-or-miss-1d', data),
-  valorPromedio1d: (data: any) => api.post('/monte-carlo/valor-promedio-1d', data),
-  convergencia1d: (data: any) => api.post('/monte-carlo/convergencia-1d', data),
-  valorPromedio2d: (data: any) => api.post('/monte-carlo/valor-promedio-2d', data),
-  valorPromedio3d: (data: any) => api.post('/monte-carlo/valor-promedio-3d', data),
-  estadistico: (data: any) => api.post('/monte-carlo/estadistico-1d', data),
-}
+  hitOrMiss: (data: any) => api.post("/monte-carlo/hit-or-miss-1d", data),
+  valorPromedio1d: (data: any) =>
+    api.post("/monte-carlo/valor-promedio-1d", data),
+  convergencia1d: (data: any) => api.post("/monte-carlo/convergencia-1d", data),
+  valorPromedio2d: (data: any) =>
+    api.post("/monte-carlo/valor-promedio-2d", data),
+  valorPromedio3d: (data: any) =>
+    api.post("/monte-carlo/valor-promedio-3d", data),
+  estadistico: (data: any) => api.post("/monte-carlo/estadistico-1d", data),
+};
 
 export const dynamic2DLinearService = {
-  solve: (data: any) => api.post('/dynamic-2d-linear/solve', data),
-}
+  solve: (data: any) => api.post("/dynamic-2d-linear/solve", data),
+};
 
 export const dynamic2DNonHomogeneousService = {
-  solve: (data: any) => api.post('/dynamic-2d-non-homogeneous/solve', data),
-}
+  solve: (data: any) => api.post("/dynamic-2d-non-homogeneous/solve", data),
+};
 
 export const dynamic2DNonLinearService = {
-  solve: (data: any) => api.post('/dynamic-2d-nonlinear/solve', data),
-}
+  solve: (data: any) => api.post("/dynamic-2d-nonlinear/solve", data),
+};
 
-export default api
+export const dynamic2DConservativeService = {
+  solve: (data: any) => api.post("/dynamic-2d-conservative/solve", data),
+};
+
+export default api;

@@ -1,89 +1,121 @@
-import { useNavigate } from 'react-router-dom'
-import './Dashboard.css'
+import { useNavigate } from "react-router-dom";
+import "./Dashboard.css";
 
 export default function Dashboard() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <div className="dashboard">
       <h1>Metodos Numericos - Agustin Monetti - UADE</h1>
-      
+
       <div className="intro-section">
         <p>Selecciona un metodo para comenzar</p>
       </div>
 
       <div className="grid-methods">
-        <div className="method-card" onClick={() => navigate('/root-finding')}>
+        <div className="method-card" onClick={() => navigate("/root-finding")}>
           <h3>Busqueda de Raices</h3>
           <p>Biseccion, Newton-Raphson, Punto Fijo, Aitken</p>
           <small>Encuentra donde f(x) = 0</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/differentiation')}>
+        <div
+          className="method-card"
+          onClick={() => navigate("/differentiation")}
+        >
           <h3>Diferencias Finitas</h3>
           <p>Calcula f'(x) y f''(x) numericamente</p>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/integration')}>
+        <div className="method-card" onClick={() => navigate("/integration")}>
           <h3>Integracion Numerica</h3>
           <p>Trapecio, Simpson 1/3, Simpson 3/8, Rectangulo Medio</p>
           <small>Aproxima el area bajo la curva</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/interpolation')}>
+        <div className="method-card" onClick={() => navigate("/interpolation")}>
           <h3>Interpolacion</h3>
           <p>Polinomio de Lagrange</p>
           <small>Reconstruye funciones desde puntos</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/monte-carlo')}>
+        <div className="method-card" onClick={() => navigate("/monte-carlo")}>
           <h3>Monte Carlo</h3>
           <p>Hit-or-Miss, Valor Promedio, Integrales Dobles y Triples</p>
-          <small>Resoluciones estocasticas con IC, seed, factor j (reduccion)</small>
+          <small>
+            Resoluciones estocasticas con IC, seed, factor j (reduccion)
+          </small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/edo')}>
+        <div className="method-card" onClick={() => navigate("/edo")}>
           <h3>Ecuaciones Diferenciales</h3>
           <p>Euler, Heun, Runge-Kutta 4</p>
           <small>Resuelve EDOs con condiciones iniciales</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/dynamic-1d')}>
+        <div className="method-card" onClick={() => navigate("/dynamic-1d")}>
           <h3>Sistemas Dinamicos 1D</h3>
           <p>Modelos autonomos con diagramas de fase</p>
           <small>Equilibrios, estabilidad y evolucion temporal</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/dynamic-2d-linear')}>
+        <div className="method-card" onClick={() => navigate("/dynamic-general")}>
+          <h3>Sistemas Dinamicos - General</h3>
+          <p>Resolver sistemas autónomos 1D o 2D</p>
+          <small>Ingresa la ecuación y resuelve sin elegir categoría</small>
+        </div>
+
+        <div
+          className="method-card"
+          onClick={() => navigate("/dynamic-2d-linear")}
+        >
           <h3>Sistemas Dinamicos 2D Lineales</h3>
           <p>Lineales homogeneos con analisis de estabilidad</p>
           <small>Eigenvalores, nullclines, diagramas de fase</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/dynamic-2d-non-homogeneous')}>
+        <div
+          className="method-card"
+          onClick={() => navigate("/dynamic-2d-non-homogeneous")}
+        >
           <h3>Sistemas Dinamicos 2D No Homogeneos</h3>
           <p>Resuelve sistemas de la forma X' = AX + B</p>
           <small>Solución general, particular y homogénea</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/dynamic-2d-nonlinear')}>
+        <div
+          className="method-card"
+          onClick={() => navigate("/dynamic-2d-nonlinear")}
+        >
           <h3>Sistemas Dinamicos 2D No Lineales</h3>
           <p>Modelos no lineales con multiples equilibrios</p>
           <small>Matriz Jacobiana, linealización, ciclos limite</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/bifurcations-1d')}>
+        <div
+          className="method-card"
+          onClick={() => navigate("/dynamic-2d-conservative")}
+        >
+          <h3>Sistemas Dinamicos Conservativos</h3>
+          <p>Sistemas sin disipación de energía</p>
+          <small>Función Hamiltoniana, Centros, Sillas y Separatrices</small>
+        </div>
+
+        <div
+          className="method-card"
+          onClick={() => navigate("/bifurcations-1d")}
+        >
           <h3>Bifurcaciones 1D</h3>
           <p>Silla nodo, pitchfork y transcrita</p>
           <small>Diagrama de bifurcacion y fase</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate('/comparator')}>
+        <div className="method-card" onClick={() => navigate("/comparator")}>
           <h3>Comparador</h3>
           <p>Analisis comparativo</p>
           <small>Compara metodos lado a lado</small>
         </div>
       </div>
     </div>
-  )
+  );
 }
