@@ -317,8 +317,23 @@ export default function Bifurcations1D() {
     setBifError('')
     setBifResult(null)
 
+    let currentPhaseParams = phaseParams
+    if (!currentPhaseParams.trim()) {
+      const min = parseMathExpr(bifMin)
+      const max = parseMathExpr(bifMax)
+      const center = (min + max) / 2
+      const delta = (max - min) / 4
+      const auto = [center - delta, center, center + delta]
+      currentPhaseParams = auto.map(v => v.toFixed(4)).join(', ')
+      setPhaseParams(currentPhaseParams)
+    }
+
     try {
       const payload = buildBifurcationPayload()
+      // Sobrescribir con los calculados si se autogeneraron
+      if (payload.phase_params.length === 0) {
+        payload.phase_params = parseNumberList(currentPhaseParams)
+      }
       setBifLoading(true)
       const res = await dynamic1DService.bifurcation(payload)
       setBifResult(res.data)
@@ -701,9 +716,9 @@ export default function Bifurcations1D() {
               type="text"
               value={phaseParams}
               onChange={(e) => setPhaseParams(e.target.value)}
-              placeholder="Ej: -1, 0, 1"
+              placeholder="Ej: -1, 0, 1 (Opcional)"
             />
-            <small>Valores separados por coma para evaluar fase.</small>
+            <small>Valores separados por coma para evaluar fase. Si se deja vacio, se autocalculan.</small>
           </div>
 
           <button type="button" className="btn-primary" onClick={handleBifurcation} disabled={bifLoading}>

@@ -433,6 +433,11 @@ class Dynamic1DService:
         bif_steps = int(payload.get('bif_steps', 60))
 
         phase_params = payload.get('phase_params', []) or []
+        if not phase_params:
+            # Si no se proporcionan, calcular puntos críticos automáticos
+            center = (bif_min + bif_max) / 2
+            delta = (bif_max - bif_min) / 4
+            phase_params = [center - delta, center, center + delta]
 
         expr_str, _ = Dynamic1DService._build_expr(model, func_str, params, control_enabled)
         expr_template = Dynamic1DService._parse_expression(expr_str, params, ['x', bif_param])
