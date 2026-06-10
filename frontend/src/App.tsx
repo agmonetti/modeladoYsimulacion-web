@@ -8,7 +8,6 @@ import Interpolation from "./pages/Interpolation";
 import MonteCarlo from "./pages/MonteCarlo";
 import Comparator from "./pages/Comparator";
 import EDO from "./pages/EDO";
-import DynamicGeneral from "./pages/DynamicGeneral";
 import Dynamic1D from "./pages/Dynamic1D";
 import Dynamic2D from "./pages/Dynamic2DLinear";
 import Dynamic2DNonHomogeneous from "./pages/Dynamic2DNonHomogeneous";
@@ -96,11 +95,6 @@ function App() {
 
           <li className="section-title">Sistemas Dinamicos</li>
           <li>
-            <Link to="/dynamic-general" onClick={closeSidebar}>
-              SD General
-            </Link>
-          </li>
-          <li>
             <Link to="/dynamic-1d" onClick={closeSidebar}>
               SD Autonomos 1D
             </Link>
@@ -151,7 +145,6 @@ function App() {
           <Route path="/comparator" element={<Comparator />} />
           {/* Agregamos la ruta para EDOs */}
           <Route path="/edo" element={<EDO />} />
-          <Route path="/dynamic-general" element={<DynamicGeneral />} />
           <Route path="/dynamic-1d" element={<Dynamic1D />} />
           <Route path="/dynamic-2d-linear" element={<Dynamic2D />} />
           <Route
