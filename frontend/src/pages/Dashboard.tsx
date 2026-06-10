@@ -59,11 +59,6 @@ export default function Dashboard() {
           <small>Equilibrios, estabilidad y evolucion temporal</small>
         </div>
 
-        <div className="method-card" onClick={() => navigate("/dynamic-general")}>
-          <h3>Sistemas Dinamicos - General</h3>
-          <p>Resolver sistemas autónomos 1D o 2D</p>
-          <small>Ingresa la ecuación y resuelve sin elegir categoría</small>
-        </div>
 
         <div
           className="method-card"
@@ -96,9 +91,18 @@ export default function Dashboard() {
           className="method-card"
           onClick={() => navigate("/dynamic-2d-conservative")}
         >
-          <h3>Sistemas Dinamicos Conservativos</h3>
+          <h3>Sistemas Dinámicos Conservativos</h3>
           <p>Sistemas sin disipación de energía</p>
           <small>Función Hamiltoniana, Centros, Sillas y Separatrices</small>
+        </div>
+
+        <div
+          className="method-card"
+          onClick={() => navigate("/dynamic-2d-lanchester")}
+        >
+          <h3>Modelos de Combate Lanchester</h3>
+          <p>Sistemas dinámicos de fuerzas de combate</p>
+          <small>Modelado de batallas, equilibrio de fuerzas</small>
         </div>
 
         <div

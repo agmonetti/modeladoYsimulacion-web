@@ -76,4 +76,8 @@ export const dynamic2DConservativeService = {
   solve: (data: any) => api.post("/dynamic-2d-conservative/solve", data),
 };
 
+export const dynamic2DLanchesterService = {
+  solve: (data: any) => api.post("/dynamic-2d-lanchester/solve", data),
+};
+
 export default api;

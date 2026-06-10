@@ -13,6 +13,7 @@ from app.api import (
     differentiation,
     dynamic_1d,
     dynamic_2d_conservative,
+    dynamic_2d_lanchester,
     dynamic_2d_linear,
     dynamic_2d_non_homogeneous,
     dynamic_2d_nonlinear,
@@ -51,6 +52,7 @@ app.include_router(dynamic_2d_linear.router)
 app.include_router(dynamic_2d_non_homogeneous.router)
 app.include_router(dynamic_2d_nonlinear.router)
 app.include_router(dynamic_2d_conservative.router)
+app.include_router(dynamic_2d_lanchester.router)
 
 
 @app.get("/")

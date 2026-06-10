@@ -13,6 +13,7 @@ import Dynamic2D from "./pages/Dynamic2DLinear";
 import Dynamic2DNonHomogeneous from "./pages/Dynamic2DNonHomogeneous";
 import Dynamic2DNonLinear from "./pages/Dynamic2DNonLinear";
 import Dynamic2DConservative from "./pages/Dynamic2DConservative";
+import Dynamic2DLanchester from "./pages/Dynamic2DLanchester";
 
 import Bifurcations1D from "./pages/Bifurcations1D";
 import "./App.css";
@@ -124,6 +125,11 @@ function App() {
               Sistemas Conservativos
             </Link>
           </li>
+          <li>
+            <Link to="/dynamic-2d-lanchester" onClick={closeSidebar}>
+              Modelos de Combate Lanchester
+            </Link>
+          </li>
 
           <li className="section-title">Herramientas</li>
           <li>
@@ -159,6 +165,10 @@ function App() {
           <Route
             path="/dynamic-2d-conservative"
             element={<Dynamic2DConservative />}
+          />
+          <Route
+            path="/dynamic-2d-lanchester"
+            element={<Dynamic2DLanchester />}
           />
         </Routes>
       </main>
