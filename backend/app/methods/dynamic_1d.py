@@ -123,6 +123,9 @@ class Dynamic1DService:
 
         if any(root.has(sp.LambertW) for root in roots):
             raise ValueError('Raices con LambertW no soportadas')
+            
+        if any(root.has(sp.I) for root in roots):
+            raise ValueError('Raices complejas (I) no soportadas para renderizado')
 
         unique_roots: List[sp.Expr] = []
         for root in roots:
@@ -454,20 +457,79 @@ class Dynamic1DService:
         param_values = np.linspace(bif_min, bif_max, bif_steps)
         equilibria_rows: List[Dict[str, Any]] = []
 
-        for p_val in param_values:
-            local_params = dict(params)
-            local_params[bif_param] = float(p_val)
-            f, _ = Dynamic1DService._compile_function(expr_str, local_params)
-            roots = Dynamic1DService.find_equilibria(f, x_min, x_max, n=n_phase)
-            equilibria = Dynamic1DService.classify_equilibria(f, roots)
-            for eq in equilibria:
-                equilibria_rows.append({
-                    'param': float(p_val),
-                    'x': eq['x'],
-                    'fprime': eq['fprime'],
-                    'stability': eq['stability'],
-                    'stability_reason': eq.get('stability_reason'),
-                })
+        # Intentar Inversión de Dominio (Domain Inversion)
+        inverse_success = False
+        try:
+            x_sym = sp.Symbol('x', real=True)
+            p_sym = sp.Symbol(bif_param, real=True)
+            r_exprs = sp.solve(expr_template, p_sym)
+            
+            if len(r_exprs) == 1:
+                r_expr = r_exprs[0]
+                r_func = sp.lambdify(x_sym, r_expr, 'numpy')
+                
+                df_dx_expr = sp.diff(expr_template, x_sym)
+                df_dx_func = sp.lambdify((x_sym, p_sym), df_dx_expr, 'numpy')
+                
+                # Grilla densa en el espacio de estados
+                x_grid = np.linspace(x_min, x_max, n_phase * 5)
+                
+                for x_val in x_grid:
+                    x_val_float = float(x_val)
+                    try:
+                        r_val = float(r_func(x_val_float))
+                    except Exception:
+                        continue
+                        
+                    if not math.isfinite(r_val):
+                        continue
+                        
+                    if bif_min <= r_val <= bif_max:
+                        try:
+                            df = float(df_dx_func(x_val_float, r_val))
+                        except Exception:
+                            df = float('nan')
+                            
+                        stability = 'indeterminado'
+                        reason = 'sin datos suficientes'
+                        if math.isfinite(df) and abs(df) > 1e-4:
+                            if df < 0:
+                                stability = 'estable'
+                                reason = f"f'(x*) = {df:.6g} < 0"
+                            else:
+                                stability = 'inestable'
+                                reason = f"f'(x*) = {df:.6g} > 0"
+                                
+                        equilibria_rows.append({
+                            'param': r_val,
+                            'x': x_val_float,
+                            'fprime': df if math.isfinite(df) else None,
+                            'stability': stability,
+                            'stability_reason': reason,
+                        })
+                
+                if equilibria_rows:
+                    inverse_success = True
+                    # Ordenar por el parametro para facilitar el graficado
+                    equilibria_rows.sort(key=lambda item: item['param'])
+        except Exception:
+            pass
+
+        if not inverse_success:
+            for p_val in param_values:
+                local_params = dict(params)
+                local_params[bif_param] = float(p_val)
+                f, _ = Dynamic1DService._compile_function(expr_str, local_params)
+                roots = Dynamic1DService.find_equilibria(f, x_min, x_max, n=n_phase)
+                equilibria = Dynamic1DService.classify_equilibria(f, roots)
+                for eq in equilibria:
+                    equilibria_rows.append({
+                        'param': float(p_val),
+                        'x': eq['x'],
+                        'fprime': eq['fprime'],
+                        'stability': eq['stability'],
+                        'stability_reason': eq.get('stability_reason'),
+                    })
 
         phase_slices: List[Dict[str, Any]] = []
         for p_val in phase_params:
