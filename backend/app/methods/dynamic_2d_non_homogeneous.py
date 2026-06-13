@@ -190,20 +190,95 @@ class Dynamic2DNonHomogeneousService:
 
         # 1. Solución Homogénea (forma general) con C1, C2 simbólicos
         # Usamos SymPy para obtener autovalores/autovectores simbólicos más simples
-        A_sym = sp.Matrix([[a, b], [c, d]])
+        A_sym = sp.Matrix([[a, b], [c, d]]).applyfunc(sp.nsimplify)
         evects = A_sym.eigenvects()
 
         # Manejo sencillo: si aparecen autovalores complejos, devolvemos placeholder
         complex_eigen = any([ev[0].has(sp.I) for ev in evects])
         if complex_eigen:
-            sol_homogenea_vectorial_latex = "X_h(t) = ..."
-            sol_homogenea_vectorial_unmultiplied_latex = "X_h(t) = ..."
-            sol_homogenea_componentes_latex = ["x_h(t) no calculada", "y_h(t) no calculada"]
-            sol_particular_latex = ["Solución particular no mostrada para caso complejo"]
+            lam = None
+            v = None
+            for ev_sym, mult, vecs in evects:
+                if sp.im(ev_sym) > 0:
+                    lam = ev_sym
+                    v = vecs[0]
+                    break
+            if lam is None:
+                lam = evects[0][0]
+                v = evects[0][2][0]
+
+            alpha = sp.re(lam)
+            beta = sp.im(lam)
+
+            vec = sp.Matrix(v)
+            dens = [el.as_numer_denom()[1] for el in vec]
+            l = 1
+            for den_val in dens:
+                l = sp.ilcm(l, den_val)
+            vec_int = (vec * l).applyfunc(sp.simplify)
+
+            a_vec = vec_int.applyfunc(sp.re)
+            b_vec = vec_int.applyfunc(sp.im)
+
+            nums = []
+            for val in list(a_vec) + list(b_vec):
+                if val != 0:
+                    nums.append(abs(int(val)))
+            if nums:
+                g = nums[0]
+                for n in nums[1:]:
+                    g = math.gcd(g, n)
+                if g > 1:
+                    vec_int = (vec_int / g).applyfunc(sp.simplify)
+                    a_vec = vec_int.applyfunc(sp.re)
+                    b_vec = vec_int.applyfunc(sp.im)
+
+            autovectores_normalizados = []
+            autovectores_relaciones_latex = []
+            autovectores_parametricos_latex = []
+            
+            exp_at = sp.exp(alpha * t_sym)
+            cos_bt = sp.cos(beta * t_sym)
+            sin_bt = sp.sin(beta * t_sym)
+
+            term1 = a_vec * cos_bt - b_vec * sin_bt
+            term2 = a_vec * sin_bt + b_vec * cos_bt
+
+            X1 = sp.simplify(exp_at * term1)
+            X2 = sp.simplify(exp_at * term2)
+
+            sol_homogenea_vectorial = sp.simplify(C1 * X1 + C2 * X2)
+            
+            term1_latex = sp.latex(term1)
+            term2_latex = sp.latex(term2)
+            exp_latex = sp.latex(exp_at)
+            
+            sol_homogenea_vectorial_unmultiplied_latex = f"X_h(t) = C_1 {exp_latex} \\left( {term1_latex} \\right) + C_2 {exp_latex} \\left( {term2_latex} \\right)"
+            sol_homogenea_vectorial_latex = f"X_h(t) = {sp.latex(sol_homogenea_vectorial)}"
+
+            xh_t = sp.simplify(sol_homogenea_vectorial[0])
+            yh_t = sp.simplify(sol_homogenea_vectorial[1])
+            sol_homogenea_componentes_latex = [sp.latex(sp.Eq(xs(t_sym), xh_t)), sp.latex(sp.Eq(ys(t_sym), yh_t))]
+
+            if forcing_is_time_varying:
+                sol_particular_latex = ["Solución particular simbólica no soportada para forcings variantes con autovalores complejos."]
+                Xp_sym = sp.Matrix([0, 0])
+            else:
+                Xp = np.zeros(2)
+                if equilibrio_pnto:
+                    Xp = np.array([equilibrio_pnto['x'], equilibrio_pnto['y']])
+                Xp_sym = sp.Matrix(Xp)
+                sol_particular_latex = [f"X_p = \\begin{{pmatrix}} {Xp[0]:.0f} \\\\ {Xp[1]:.0f} \\end{{pmatrix}}"]
+
             constantes = {"c1": "C1", "c2": "C2"}
-            sol_general_vectorial_latex = "X(t) = X_h(t) + X_p"
-            sol_general_vectorial_unmultiplied_latex = "X(t) = ..."
-            sol_general_latex = ["Solución general no calculada (autovalores complejos)"]
+
+            sol_general_vectorial = sp.simplify(sol_homogenea_vectorial + Xp_sym)
+            sol_general_vectorial_unmultiplied_latex = f"X(t) = C_1 {exp_latex} \\left( {term1_latex} \\right) + C_2 {exp_latex} \\left( {term2_latex} \\right) + {sp.latex(Xp_sym)}"
+            sol_general_vectorial_latex = f"X(t) = {sp.latex(sol_general_vectorial)}"
+
+            x_t = sp.simplify(sol_general_vectorial[0])
+            y_t = sp.simplify(sol_general_vectorial[1])
+            sol_general_latex = [sp.latex(sp.Eq(xs(t_sym), x_t)), sp.latex(sp.Eq(ys(t_sym), y_t))]
         else:
             # Extraer autovalores y autovectores simples
             # evects: list of tuples (eigenvalue, multiplicity, [eigenvectors])
