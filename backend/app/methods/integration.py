@@ -9,13 +9,14 @@ import numpy as np
 import sympy as sp
 from typing import Dict, Callable
 import warnings
+import re
 
 class IntegrationService:
     
     @staticmethod
     def compilar_funcion(texto_funcion: str) -> Callable:
         try:
-            texto_funcion = texto_funcion.replace('e^', 'exp(').replace('^', '**').replace('sen', 'sin')
+            texto_funcion = re.sub(r'(?<![A-Za-z0-9_])[eE]\^', 'E**', texto_funcion).replace('^', '**').replace('sen', 'sin')
             x_sym = sp.Symbol('x')
             diccionario_local = {'e': sp.E, 'pi': sp.pi}
             expr = sp.sympify(texto_funcion, locals=diccionario_local)
