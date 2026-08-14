@@ -7,6 +7,7 @@ import sympy as sp
 import warnings
 from typing import Dict
 from typing import Dict, Callable
+from app.core.utils import safe_sympify
 
 class DifferentiationService:
     
@@ -15,9 +16,8 @@ class DifferentiationService:
     def compilar_funcion(texto_funcion: str) -> Callable:
         """Convierte string a función callable."""
         try:
-            texto_funcion = texto_funcion.replace('e^', 'exp(')
             x = sp.Symbol('x')
-            expr = sp.sympify(texto_funcion)
+            expr = safe_sympify(texto_funcion, allowed_symbols=['x'])
             return sp.lambdify(x, expr, 'numpy'), expr
         except Exception as e:
             raise ValueError(f"Error compilando función: {str(e)}")
@@ -59,13 +59,12 @@ class DifferentiationService:
     def calcular_diferencias_completas(func_str: str, x_val: float, h: float, precision: int = 8) -> Dict:
         """Calcula diferencias Progresivas, Regresivas y Centrales enviando error crudo."""
         try:
-            texto_funcion = func_str.replace('e^', 'exp(').replace('^', '**').replace('sen', 'sin')
             # Tratamiento especial para 'log' en SymPy (por defecto es ln)
             # si el usuario escribe 'log10', SymPy lo manejará. 'ln' es el estándar.
             
             x_sym = sp.Symbol('x')
             diccionario_local = {'e': sp.E, 'pi': sp.pi}
-            expr = sp.sympify(texto_funcion, locals=diccionario_local)
+            expr = safe_sympify(func_str, local_dict=diccionario_local, allowed_symbols=['x'])
             f = sp.lambdify(x_sym, expr, 'numpy')
             
             dev_expr = sp.diff(expr, x_sym)

@@ -1,4 +1,5 @@
 import math
+import re
 from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
@@ -11,14 +12,14 @@ from sympy.parsing.sympy_parser import (
     implicit_multiplication_application,
 )
 
-from app.core.utils import numerical_derivative
+from app.core.utils import numerical_derivative, safe_parse_expr
 
 
 class Dynamic1DService:
     @staticmethod
     def _sanitize_expr(expr: str) -> str:
         cleaned = expr.replace('sen', 'sin')
-        cleaned = cleaned.replace('e^', 'exp(').replace('^', '**')
+        cleaned = re.sub(r'(?<![A-Za-z0-9_])[eE]\^', 'E**', cleaned).replace('^', '**')
         return cleaned
 
     @staticmethod
@@ -39,9 +40,11 @@ class Dynamic1DService:
             if sym not in local_dict:
                 local_dict[sym] = sp.Symbol(sym, real=True)
 
-        expr = parse_expr(
+        gate_allowed = list(dict.fromkeys(list(allowed_symbols) + list(params.keys())))
+        expr = safe_parse_expr(
             expr_str,
             local_dict=local_dict,
+            allowed_symbols=gate_allowed,
             transformations=(standard_transformations + (implicit_multiplication_application,)),
         )
 

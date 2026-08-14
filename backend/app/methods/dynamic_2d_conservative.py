@@ -6,9 +6,9 @@ import numpy as np
 import sympy as sp
 from sympy.parsing.sympy_parser import (
     implicit_multiplication_application,
-    parse_expr,
     standard_transformations,
 )
+from app.core.utils import safe_parse_expr
 
 
 class Dynamic2DConservativeService:
@@ -46,14 +46,16 @@ class Dynamic2DConservativeService:
         )
 
         try:
-            f_raw = parse_expr(
-                eq_x_str.replace("^", "**"),
+            f_raw = safe_parse_expr(
+                eq_x_str,
                 local_dict={"x": x, "y": y, "mu": mu_sym},
+                allowed_symbols=["x", "y", "mu"],
                 transformations=transformations,
             )
-            g_raw = parse_expr(
-                eq_y_str.replace("^", "**"),
+            g_raw = safe_parse_expr(
+                eq_y_str,
                 local_dict={"x": x, "y": y, "mu": mu_sym},
+                allowed_symbols=["x", "y", "mu"],
                 transformations=transformations,
             )
 

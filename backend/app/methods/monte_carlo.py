@@ -4,6 +4,7 @@ import warnings
 from scipy.stats import norm
 from numpy.polynomial.legendre import leggauss
 from typing import Dict, Tuple, List
+from app.core.utils import safe_sympify
 
 class MonteCarloService:
     @staticmethod
@@ -22,14 +23,8 @@ class MonteCarloService:
     @staticmethod
     def compilar_funcion(texto_funcion: str, variables: str = 'x'):
         try:
-            texto_funcion = texto_funcion.replace('e^', 'exp(')
-            abiertos = texto_funcion.count('(')
-            cerrados = texto_funcion.count(')')
-            if abiertos > cerrados:
-                texto_funcion = texto_funcion + ')' * (abiertos - cerrados)
-            
             vars_sympy = sp.symbols(variables)
-            expr = sp.sympify(texto_funcion)
+            expr = safe_sympify(texto_funcion, allowed_symbols=variables.split())
             f_compilada = sp.lambdify(vars_sympy, expr, modules=['numpy'])
             return f_compilada
         except Exception as e:

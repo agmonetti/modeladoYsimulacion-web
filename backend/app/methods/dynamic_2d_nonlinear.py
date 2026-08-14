@@ -6,9 +6,9 @@ import numpy as np
 import sympy as sp
 from sympy.parsing.sympy_parser import (
     implicit_multiplication_application,
-    parse_expr,
     standard_transformations,
 )
+from app.core.utils import safe_parse_expr
 
 
 class Dynamic2DNonLinearService:
@@ -85,14 +85,17 @@ class Dynamic2DNonLinearService:
 
         try:
             local_dict = {"x": x, "y": y, "mu": mu_sym, **param_symbols}
-            f_raw = parse_expr(
-                eq_x_str.replace("^", "**"),
+            gate_allowed = list(dict.fromkeys(["x", "y", "mu"] + list(params.keys())))
+            f_raw = safe_parse_expr(
+                eq_x_str,
                 local_dict=local_dict,
+                allowed_symbols=gate_allowed,
                 transformations=transformations,
             )
-            g_raw = parse_expr(
-                eq_y_str.replace("^", "**"),
+            g_raw = safe_parse_expr(
+                eq_y_str,
                 local_dict=local_dict,
+                allowed_symbols=gate_allowed,
                 transformations=transformations,
             )
 

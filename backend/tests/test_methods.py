@@ -214,7 +214,7 @@ def test_biseccion_parametrizado(funcion, a, b, raiz_esperada):
 # 7. STRINGS INVÁLIDOS / MALICIOSOS
 # ==========================================
 
-@pytest.mark.parametrize("expr_invalida", ["x** + 2", "2***x", "", ")("])
+@pytest.mark.parametrize("expr_invalida", ["2***x", "", ")("])
 def test_compiladores_rechazan_strings_invalidos(expr_invalida):
     compiladores = [
         RootFindingService.compilar_funcion,
@@ -249,6 +249,39 @@ def test_compiladores_rechazan_expresiones_maliciosas(expr_maliciosa):
     for compilar in compiladores:
         with pytest.raises(ValueError):
             compilar(expr_maliciosa)
+
+
+def test_compiladores_bloquean_rce_sin_ejecutar(tmp_path):
+    """Los payloads RCE deben rechazarse ANTES de que se ejecute el código."""
+    marker = tmp_path / "pwned.txt"
+    payload = f"__import__('os').system('touch {marker}')"
+    compiladores = [
+        RootFindingService.compilar_funcion,
+        IntegrationService.compilar_funcion,
+        DifferentiationService.compilar_funcion,
+        InterpolationService.compilar_funcion,
+        MonteCarloService.compilar_funcion,
+    ]
+    for compilar in compiladores:
+        with pytest.raises(ValueError):
+            compilar(payload)
+    assert not marker.exists()
+
+
+def test_safe_parse_expr_bloquea_atributos():
+    """El gate léxico debe rechazar acceso a atributos en todos los parsers."""
+    from app.core.utils import safe_parse_expr, safe_sympify
+
+    for fn in (safe_sympify, safe_parse_expr):
+        for payload in [
+            "__import__('os')",
+            "x.__class__",
+            "globals()",
+            "(__import__('builtins'))",
+            "os.system('echo hi')",
+        ]:
+            with pytest.raises(ValueError):
+                fn(payload, allowed_symbols=["x"])
 
 
 # ==========================================

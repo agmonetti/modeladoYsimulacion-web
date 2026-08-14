@@ -3,6 +3,7 @@ import sympy as sp
 import math
 from fractions import Fraction
 from typing import Dict, Any, List
+from app.core.utils import safe_sympify
 
 class Dynamic2DNonHomogeneousService:
     @staticmethod
@@ -112,7 +113,7 @@ class Dynamic2DNonHomogeneousService:
                 return sp.Float(value)
             text = str(value).strip()
             try:
-                return sp.sympify(text, locals={'t': t_sym, 'sin': sp.sin, 'cos': sp.cos, 'tan': sp.tan, 'exp': sp.exp, 'pi': sp.pi})
+                return safe_sympify(text, local_dict={'t': t_sym, 'sin': sp.sin, 'cos': sp.cos, 'tan': sp.tan, 'exp': sp.exp, 'pi': sp.pi}, allowed_symbols=['t'])
             except Exception:
                 return sp.Float(text)
 
