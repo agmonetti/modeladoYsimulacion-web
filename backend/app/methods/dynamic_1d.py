@@ -6,6 +6,7 @@ import numpy as np
 import sympy as sp
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
+from sympy.core.relational import Relational
 from sympy.parsing.sympy_parser import (
     parse_expr,
     standard_transformations,
@@ -74,7 +75,7 @@ class Dynamic1DService:
             return str(result)
 
     @staticmethod
-    def _extract_real_conditions(expr: sp.Expr) -> List[sp.Relational]:
+    def _extract_real_conditions(expr: sp.Expr) -> List[Relational]:
         conditions: List[sp.Relational] = []
         for pow_expr in expr.atoms(sp.Pow):
             exp = pow_expr.exp
@@ -238,6 +239,10 @@ class Dynamic1DService:
         with np.errstate(all='ignore'):
             y = f(x)
         y = np.asarray(y, dtype=float)
+        if y.ndim == 0:
+            # Función constante (p. ej. f(x) ≡ 0): el lambdify devuelve escalar.
+            y = np.full(np.shape(x), float(y), dtype=float)
+        y = y.copy()
         y[~np.isfinite(y)] = np.nan
         return y
 
@@ -446,7 +451,8 @@ class Dynamic1DService:
             phase_params = [center - delta, center, center + delta]
 
         expr_str, _ = Dynamic1DService._build_expr(model, func_str, params, control_enabled)
-        expr_template = Dynamic1DService._parse_expression(expr_str, params, ['x', bif_param])
+        bif_allowed = list(dict.fromkeys(['x', bif_param] + list(params.keys())))
+        expr_template = Dynamic1DService._parse_expression(expr_str, params, bif_allowed)
         if params:
             expr_template = expr_template.subs(params)
 

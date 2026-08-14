@@ -163,6 +163,17 @@ def test_montecarlo_media_muestral_hit_or_miss():
     assert res["media_muestral"] == pytest.approx(res["n_exitos"] / res["N"], rel=1e-6)
 
 
+def test_montecarlo_hit_or_miss_integrando_con_signo():
+    """Integrandos que cambian de signo deben estimar ∫f, no ±∫|f|."""
+    f_sen = MonteCarloService.compilar_funcion("sin(x)")
+    # sin(x) en [0, 2π] tiene integral exacta 0
+    res = MonteCarloService.hit_or_miss_1d(f_sen, 0, 2 * math.pi, N=50000, seed=42)
+    assert res["integral"] == pytest.approx(0.0, abs=0.15)
+    # sin(x) en [0, π] tiene integral exacta 2
+    res2 = MonteCarloService.hit_or_miss_1d(f_sen, 0, math.pi, N=50000, seed=42)
+    assert res2["integral"] == pytest.approx(2.0, abs=0.15)
+
+
 def test_montecarlo_media_muestral_2d_y_3d():
     f2 = MonteCarloService.compilar_funcion("x + y", "x y")
     res2 = MonteCarloService.valor_promedio_2d(f2, (0, 1), (0, 1), N=4000, seed=7)

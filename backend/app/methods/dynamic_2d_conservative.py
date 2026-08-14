@@ -18,11 +18,20 @@ class Dynamic2DConservativeService:
             return "Punto Degenerado", "Jacobiano singular. Requiere análisis superior."
         elif determinante < 0:
             return "Silla", "Punto hiperbólico inestable. Por aquí pasa la Separatriz."
-        else:
+        # determinante > 0
+        if abs(traza) < 1e-10:
             return (
                 "Centro",
                 "Punto estable (no asintótico). Las trayectorias forman órbitas cerradas (conservación de energía).",
             )
+        discriminante = traza**2 - 4 * determinante
+        if discriminante < 0:
+            if traza < 0:
+                return "Foco Estable", "Espiral convergente (atractor). Las trayectorias se enrollan hacia el punto."
+            return "Foco Inestable", "Espiral divergente (repulsor). Las trayectorias se alejan del punto."
+        if traza < 0:
+            return "Nodo Estable", "Nodo asintóticamente estable. Las trayectorias convergen al punto."
+        return "Nodo Inestable", "Nodo repulsivo. Las trayectorias divergen del punto."
 
     @staticmethod
     def solve(payload: Dict[str, Any]) -> Dict[str, Any]:

@@ -38,32 +38,52 @@ class MonteCarloService:
         x_test = np.linspace(a, b, 200)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            y_test = np.nan_to_num(f(x_test), nan=0.0)
-            
+            y_test_raw = f(x_test)
+
+        # Detección de singularidades en el barrido (para no silenciarlas)
+        con_singularidades = bool(np.any(~np.isfinite(y_test_raw)))
+        y_test = np.nan_to_num(y_test_raw, nan=0.0, posinf=0.0, neginf=0.0)
+
         y_min, y_max = float(np.min(y_test)), float(np.max(y_test))
         y_base = min(0, y_min) * 1.1 if min(0, y_min) < 0 else 0
         y_techo = max(0, y_max) * 1.1
-        
+
         x_rand = np.random.uniform(a, b, N)
         y_rand = np.random.uniform(y_base, y_techo, N)
-        
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             f_eval = f(x_rand)
-        
+
         exitos_pos = (y_rand > 0) & (y_rand <= f_eval)
         exitos_neg = (y_rand < 0) & (y_rand >= f_eval)
         exitos_totales = exitos_pos | exitos_neg
         n_exitos = int(np.sum(exitos_totales))
-        
-        area_caja = (b - a) * (y_techo - y_base)
-        p_exito = n_exitos / N
-        integral_aprox = area_caja * p_exito 
-        if np.sum(exitos_neg) > np.sum(exitos_pos):
-            integral_aprox = -integral_aprox
+        n_pos = int(np.sum(exitos_pos))
+        n_neg = int(np.sum(exitos_neg))
 
-        # Para hit-or-miss, la media muestral natural es la media del indicador de éxito.
-        media_muestral = p_exito
+        # Estimación con signo: la caja total [y_base, y_techo] contiene la región
+        # positiva y la negativa. El estimador de Hit-or-Miss con signo es
+        #   I ≈ (b - a) * (y_techo - y_base) * (n_pos - n_neg) / N
+        # que reproduce ∫f⁺ - ∫f⁻ (antes devolvía ±∫|f| para integrandos con signo).
+        area_caja = (b - a) * (y_techo - y_base)
+        integral_aprox = area_caja * (n_pos - n_neg) / N
+
+        n_no_finitos = int(np.sum(~np.isfinite(f_eval)))
+        p_exito = n_exitos / N
+        notas = []
+        if con_singularidades:
+            notas.append(
+                "Se detectaron singularidades en el barrido de la caja; los límites se "
+                "calcularon con los valores finitos."
+            )
+        if n_no_finitos > 0:
+            notas.append(
+                f"{n_no_finitos} muestra(s) no finita(s) se descartaron; el resultado puede estar sesgado."
+            )
+
+        # Para hit-or-miss, la media muestral natural es la media del indicador con signo.
+        media_muestral = (n_pos - n_neg) / N
 
         # Cálculo Estadístico para Hit-or-Miss (Distribución Binomial)
         desv_std = np.sqrt(p_exito * (1 - p_exito)) if N > 1 else 0
@@ -97,7 +117,8 @@ class MonteCarloService:
             "historial": historial,
             "x_line": [round(float(x), precision) for x in x_test], # Línea para el frontend
             "y_line": [round(float(y), precision) for y in y_test],
-            "grafico_limites": {"y_base": float(y_base), "y_techo": float(y_techo)}
+            "grafico_limites": {"y_base": float(y_base), "y_techo": float(y_techo)},
+            "notas": notas
         }
 
 

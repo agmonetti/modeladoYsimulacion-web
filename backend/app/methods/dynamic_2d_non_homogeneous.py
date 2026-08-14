@@ -612,23 +612,15 @@ class Dynamic2DNonHomogeneousService:
             if forcing_is_time_varying and abs(b) < 1e-12 and abs(c) < 1e-12:
                 # Caso diagonal: resolver componente por componente con factor integrante.
                 def trig_particular(forcing_expr, coeff):
-                    forcing_expanded = sp.expand_trig(sp.expand(forcing_expr))
-                    if not forcing_expanded.has(sp.sin(t_sym)) and not forcing_expanded.has(sp.cos(t_sym)):
-                        raw = sp.simplify(sp.exp(coeff * t_sym) * sp.integrate(sp.exp(-coeff * t_sym) * forcing_expanded, t_sym))
-                        return sp.expand_trig(raw)
-
-                    u, v = sp.symbols('u v')
-                    trial = u * sp.cos(t_sym) + v * sp.sin(t_sym)
-                    equation = sp.expand(sp.diff(trial, t_sym) - coeff * trial - forcing_expanded)
-                    equation = sp.expand_trig(equation)
-                    cos_coeff = sp.expand(equation).coeff(sp.cos(t_sym))
-                    sin_coeff = sp.expand(equation).coeff(sp.sin(t_sym))
-                    solution = sp.solve([sp.Eq(cos_coeff, 0), sp.Eq(sin_coeff, 0)], [u, v], dict=True)
-                    if solution:
-                        sol = solution[0]
-                        return sp.expand_trig(sol[u] * sp.cos(t_sym) + sol[v] * sp.sin(t_sym))
-
-                    raw = sp.simplify(sp.exp(coeff * t_sym) * sp.integrate(sp.exp(-coeff * t_sym) * forcing_expanded, t_sym))
+                    # Solución particular de  y' - coeff*y = forcing(t)  por factor
+                    # integrante:  y_p(t) = e^{coeff t} ∫ e^{-coeff t} forcing(t) dt.
+                    # Vale para CUALQUIER forzado, incluidas frecuencias ω ≠ 1
+                    # (antes, el ensayo u·cos(t)+v·sin(t) solo era correcto para ω=1
+                    #  y devolvía soluciones que no satisfacían la EDO para ω≠1).
+                    raw = sp.simplify(
+                        sp.exp(coeff * t_sym)
+                        * sp.integrate(sp.exp(-coeff * t_sym) * forcing_expr, t_sym)
+                    )
                     return sp.expand_trig(raw)
 
                 x_p_t = trig_particular(e_expr, a)

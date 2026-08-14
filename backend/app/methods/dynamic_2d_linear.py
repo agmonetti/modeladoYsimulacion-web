@@ -162,6 +162,10 @@ class Dynamic2DLinearService:
         x0_sym, y0_sym = to_num(x0), to_num(y0)
         t0_sym = to_num(t0)
 
+        xs = sp.Function('x')
+        ys = sp.Function('y')
+        t_sym = sp.Symbol('t', real=True)
+
         sol_homogenea_latex = []
         try:
             # Para la solución homogénea, forzamos B a ser [0, 0]
