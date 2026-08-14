@@ -4,6 +4,7 @@ import PlotlyGraph from '../components/PlotlyGraph'
 import IterationsTable from '../components/IterationsTable'
 import FormulaDisplay from '../components/FormulaDisplay'
 import MathKeyboard from '../components/MathKeyboard'
+import { parseMathExpr } from '../lib/math'
 import '../styles/Method.css'
 
 export default function MonteCarlo() {
@@ -41,15 +42,6 @@ export default function MonteCarlo() {
 
   const handleInsert = (text: string) => setInput({ ...input, func_str: input.func_str + text });
 
-  const createJsFunc = (funcStr: string) => {
-    let jsFuncStr = funcStr.toLowerCase()
-      .replace(/sen\(/g, 'sin(').replace(/ln\(/g, 'log(').replace(/\^/g, '**')
-      .replace(/-([a-zA-Z0-9_.]+)\*\*/g, '-($1)**')
-      .replace(/\b(sin|cos|tan|asin|acos|atan|exp|log|sqrt|abs)\(/g, 'Math.$1(')
-      .replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E');
-    return new Function('x', `return ${jsFuncStr}`);
-  }
-
   const formatToLatex = (str: string) => {
     if (!str) return '';
     return str.toLowerCase()
@@ -73,20 +65,6 @@ export default function MonteCarlo() {
       const safePrecision = Number.isFinite(precisionVal)
         ? Math.min(15, Math.max(1, precisionVal))
         : 6;
-
-      const parseMathExpr = (expr: string): number => {
-        if (!expr || expr.trim() === '') return NaN;
-        try {
-          const safeExpr = expr
-            .replace(/\bpi\b/gi, 'Math.PI')
-            .replace(/\be\b/gi, 'Math.E')
-            .replace(/\^/g, '**');
-          const res = new Function(`return ${safeExpr}`)();
-          return Number(res);
-        } catch {
-          return NaN;
-        }
-      };
 
       const parsedNivelConfianza = parseMathExpr(input.nivel_confianza);
       if (!Number.isFinite(parsedNivelConfianza) || parsedNivelConfianza <= 0 || parsedNivelConfianza >= 1) {
@@ -185,11 +163,7 @@ export default function MonteCarlo() {
     if (input.factor_j.trim() !== "") {
         const factor = (() => {
           try {
-            const safeExpr = input.factor_j
-              .replace(/\bpi\b/gi, 'Math.PI')
-              .replace(/\be\b/gi, 'Math.E')
-              .replace(/\^/g, '**');
-            return Number(new Function(`return ${safeExpr}`)());
+            return parseMathExpr(input.factor_j);
           } catch {
             return NaN;
           }
@@ -212,11 +186,7 @@ export default function MonteCarlo() {
       if (input.max_error.trim() !== "") {
           const max_err = (() => {
             try {
-              const safeExpr = input.max_error
-                .replace(/\bpi\b/gi, 'Math.PI')
-                .replace(/\be\b/gi, 'Math.E')
-                .replace(/\^/g, '**');
-              return Number(new Function(`return ${safeExpr}`)());
+              return parseMathExpr(input.max_error);
             } catch {
               return NaN;
             }

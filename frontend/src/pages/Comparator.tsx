@@ -4,6 +4,7 @@ import PlotlyGraph from '../components/PlotlyGraph'
 import FormulaDisplay from '../components/FormulaDisplay'
 import '../styles/Method.css'
 import MathKeyboard from '../components/MathKeyboard';
+import { parseMathExpr, compileMathFunc } from '../lib/math';
 
 export default function Comparator() {
   const [mode, setMode] = useState('raices')
@@ -51,21 +52,6 @@ export default function Comparator() {
       latex = latex.replace(/log\(/g, '\\ln(');
       latex = latex.replace(/ln\(/g, '\\ln(');
       return latex;
-  }
-
-  // TRADUCTOR MATEMÁTICO: Convierte "pi/10" a 0.314159...
-  const parseMathExpr = (expr: string): number => {
-    if (!expr || expr.trim() === '') return NaN;
-    try {
-      const safeExpr = expr
-        .replace(/\bpi\b/gi, 'Math.PI')
-        .replace(/\be\b/gi, 'Math.E')
-        .replace(/\^/g, '**');
-      const res = new Function(`return ${safeExpr}`)();
-      return Number(res);
-    } catch {
-      return NaN;
-    }
   }
 
   const handleModeChange = (newMode: string) => {
@@ -134,14 +120,7 @@ export default function Comparator() {
     }
   }
 
-  const createJsFunc = (funcStr: string) => {
-    let jsFuncStr = funcStr.toLowerCase()
-      .replace(/sen\(/g, 'sin(').replace(/ln\(/g, 'log(').replace(/\^/g, '**')
-      .replace(/-([a-zA-Z0-9_.]+)\*\*/g, '-($1)**')
-      .replace(/\b(sin|cos|tan|asin|acos|atan|exp|log|sqrt|abs)\(/g, 'Math.$1(')
-      .replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E');
-    return new Function('x', `return ${jsFuncStr}`);
-  }
+  const createJsFunc = (funcStr: string) => compileMathFunc(funcStr)
 
   // ... (generateRootsPlot, generateConvergencePlot, generateIntegralPlot se mantienen igual)
   const generateRootsPlot = () => {

@@ -4,6 +4,7 @@ import PlotlyGraph from '../components/PlotlyGraph'
 import IterationsTable from '../components/IterationsTable'
 import FormulaDisplay from '../components/FormulaDisplay'
 import MathKeyboard from '../components/MathKeyboard'
+import { compileMathFunc } from '../lib/math'
 import '../styles/Method.css'
 
 export default function RootFinding() {
@@ -106,14 +107,7 @@ export default function RootFinding() {
     }
   }
 
-  const createJsFunc = (funcStr: string) => {
-    let jsFuncStr = funcStr.toLowerCase()
-      .replace(/sen\(/g, 'sin(').replace(/ln\(/g, 'log(').replace(/\^/g, '**')
-      .replace(/-([a-zA-Z0-9_.]+)\*\*/g, '-($1)**')
-      .replace(/\b(sin|cos|tan|asin|acos|atan|exp|log|sqrt|abs)\(/g, 'Math.$1(')
-      .replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E');
-    return new Function('x', `return ${jsFuncStr}`);
-  }
+  const createJsFunc = (funcStr: string) => compileMathFunc(funcStr)
 
   const formatValidationNumber = (value: number) => {
     const absolute = Math.abs(value)

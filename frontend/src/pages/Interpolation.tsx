@@ -4,6 +4,7 @@ import PlotlyGraph from '../components/PlotlyGraph'
 import FormulaDisplay from '../components/FormulaDisplay'
 import '../styles/Method.css'
 import MathKeyboard from '../components/MathKeyboard';
+import { parseMathExpr, compileMathFunc } from '../lib/math';
 
 
 export default function Interpolation() {
@@ -44,21 +45,6 @@ export default function Interpolation() {
     latex = latex.replace(/log\(/g, '\\ln(');
     latex = latex.replace(/ln\(/g, '\\ln(');
     return latex;
-  }
-
-  // SÚPER TRADUCTOR MATEMÁTICO (Convierte pi/4 -> 0.785...)
-  const parseMathExpr = (expr: string): number => {
-    if (!expr || expr.trim() === '') return NaN;
-    try {
-      let safeExpr = expr
-        .replace(/\bpi\b/gi, 'Math.PI')
-        .replace(/\be\b/gi, 'Math.E')
-        .replace(/\^/g, '**');
-      const res = new Function(`return ${safeExpr}`)();
-      return Number(res);
-    } catch {
-      return NaN;
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,14 +96,7 @@ export default function Interpolation() {
     }
   }
 
-  const createJsFunc = (funcStr: string) => {
-    let jsFuncStr = funcStr.toLowerCase()
-      .replace(/sen\(/g, 'sin(').replace(/ln\(/g, 'log(').replace(/\^/g, '**')
-      .replace(/-([a-zA-Z0-9_.]+)\*\*/g, '-($1)**')
-      .replace(/\b(sin|cos|tan|asin|acos|atan|exp|log|sqrt|abs)\(/g, 'Math.$1(')
-      .replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E');
-    return new Function('x', `return ${jsFuncStr}`);
-  }
+  const createJsFunc = (funcStr: string) => compileMathFunc(funcStr)
 
   const generateInterpolationPlot = () => {
     try {
@@ -146,8 +125,13 @@ export default function Interpolation() {
       else if (modo === 'caso2' && result && result.polinomio) {
         const puntos_y = input.puntos_y.split(',').map(y => parseMathExpr(y.trim()))
         const jsPolyStr = result.polinomio.replace(/\*\*/g, '**')
-        const polyFunc = new Function('x', `return ${jsPolyStr}`)
-        const y_poly = x_plot.map(xi => { try { return polyFunc(xi) } catch { return NaN } })
+        let polyFunc: (x: number) => number
+        try {
+          polyFunc = compileMathFunc(jsPolyStr)
+        } catch {
+          polyFunc = () => NaN
+        }
+        const y_poly = x_plot.map(xi => polyFunc(xi))
 
         plotData.push({ x: x_plot, y: y_poly, type: 'scatter', name: 'P(x) Lagrange', line: { color: '#ffa500', dash: 'dash' } })
         plotData.push({ x: puntos_x, y: puntos_y, type: 'scatter', name: 'Puntos base', mode: 'markers', marker: { size: 8, color: '#ff0000' } })

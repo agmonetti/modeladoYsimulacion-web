@@ -3,6 +3,7 @@ import PlotlyGraph from '../components/PlotlyGraph'
 import FormulaDisplay from '../components/FormulaDisplay'
 import MathKeyboard from '../components/MathKeyboard'
 import { dynamic1DService } from '../services/api'
+import { parseMathExpr } from '../lib/math'
 import '../styles/Method.css'
 
 type Equilibrium = {
@@ -75,20 +76,6 @@ const paramRanges: Record<string, { min: number; max: number; step: number }> = 
   h: { min: 0, max: 50, step: 0.5 },
   k: { min: 0.01, max: 1, step: 0.001 },
   Ta: { min: -50, max: 100, step: 0.5 }
-}
-
-const parseMathExpr = (expr: string): number => {
-  if (!expr || expr.trim() === '') return NaN
-  try {
-    const safeExpr = expr
-      .replace(/\bpi\b/gi, 'Math.PI')
-      .replace(/\be\b/gi, 'Math.E')
-      .replace(/\^/g, '**')
-    const res = new Function(`return ${safeExpr}`)()
-    return Number(res)
-  } catch {
-    return NaN
-  }
 }
 
 const parseNumberList = (raw: string): number[] => {

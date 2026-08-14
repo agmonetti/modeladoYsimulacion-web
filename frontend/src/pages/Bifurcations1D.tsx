@@ -3,6 +3,7 @@ import PlotlyGraph from '../components/PlotlyGraph'
 import FormulaDisplay from '../components/FormulaDisplay'
 import MathKeyboard from '../components/MathKeyboard'
 import { dynamic1DService } from '../services/api'
+import { parseMathExpr } from '../lib/math'
 import '../styles/Method.css'
 
 type Equilibrium = {
@@ -113,20 +114,6 @@ const bifurcationDefaults: Record<string, {
     phase: '-1, 0, 1',
     x_min: -2,
     x_max: 2
-  }
-}
-
-const parseMathExpr = (expr: string): number => {
-  if (!expr || expr.trim() === '') return NaN
-  try {
-    const safeExpr = expr
-      .replace(/\bpi\b/gi, 'Math.PI')
-      .replace(/\be\b/gi, 'Math.E')
-      .replace(/\^/g, '**')
-    const res = new Function(`return ${safeExpr}`)()
-    return Number(res)
-  } catch {
-    return NaN
   }
 }
 
@@ -938,7 +925,7 @@ export default function Bifurcations1D() {
                       </div>
                     )
                   })()
-                ) : advancedSummary?.existenceStart !== null ? (
+                ) : advancedSummary && advancedSummary.existenceStart !== null ? (
                   <div>
                     <strong>Condicion de existencia (aprox.):</strong>
                     <div style={{ marginTop: '4px' }}>

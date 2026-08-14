@@ -3,6 +3,7 @@ import PlotlyGraph from '../components/PlotlyGraph';
 import FormulaDisplay from '../components/FormulaDisplay';
 import MathKeyboard from '../components/MathKeyboard';
 import { edoService } from '../services/api';
+import { parseMathExpr } from '../lib/math';
 import '../styles/Method.css';
 
 export default function EDO() {
@@ -40,19 +41,6 @@ export default function EDO() {
     return latex;
   };
 
-  const parseMathExpr = (expr: string): number => {
-    if (!expr || expr.trim() === '') return NaN;
-    try {
-      const safeExpr = expr
-        .replace(/\bpi\b/gi, 'Math.PI')
-        .replace(/\be\b/gi, 'Math.E')
-        .replace(/\^/g, '**');
-      const res = new Function(`return ${safeExpr}`)();
-      return Number(res);
-    } catch {
-      return NaN;
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
