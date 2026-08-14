@@ -68,7 +68,13 @@ def read_root():
             "monte_carlo": "/api/monte-carlo",
             "ode": "/api/ode",
             "dynamic_1d": "/api/dynamic-1d",
+            "dynamic_2d_linear": "/api/dynamic-2d-linear",
+            "dynamic_2d_non_homogeneous": "/api/dynamic-2d-non-homogeneous",
+            "dynamic_2d_nonlinear": "/api/dynamic-2d-nonlinear",
+            "dynamic_2d_conservative": "/api/dynamic-2d-conservative",
+            "dynamic_2d_lanchester": "/api/dynamic-2d-lanchester",
         },
+        "health": "/health",
         "docs": "/docs",
         "openapi": "/openapi.json",
     }
